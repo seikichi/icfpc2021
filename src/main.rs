@@ -170,12 +170,12 @@ fn squared_distance(a: &Point, b: &Point) -> f64 {
 
 fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
     let mut s = 0.0;
-    for h in hole.exterior().points_iter() {
+    for h in hole.exterior().points_iter().skip(1) {
         s += figure
             .vertices
             .iter()
             .map(|v| squared_distance(v, &h))
-            .fold(0.0 / 0.0, |m, x| x.max(m));
+            .fold(0.0 / 0.0, |m, x| x.min(m));
     }
     s
 }
@@ -191,4 +191,37 @@ fn main() {
     } else {
         eprintln!("No solutions");
     }
+}
+
+#[test]
+fn test_calculate_dislike() {
+    let figure1 = Figure {
+        edges: vec![],
+        vertices: vec![Point::new(1.0, 1.0)],
+    };
+    let figure2 = Figure {
+        edges: vec![],
+        vertices: vec![
+            Point::new(0.0, 0.0),
+            Point::new(3.0, 0.0),
+            Point::new(3.0, 3.0),
+            Point::new(0.0, 3.0),
+        ],
+    };
+    let figure3 = Figure {
+        edges: vec![],
+        vertices: vec![Point::new(0.0, 0.0), Point::new(3.0, 0.0)],
+    };
+    let hole1 = Polygon::new(
+        geo::LineString::from(vec![
+            Point::new(0.0, 0.0),
+            Point::new(3.0, 0.0),
+            Point::new(3.0, 3.0),
+            Point::new(0.0, 3.0),
+        ]),
+        vec![],
+    );
+    assert!(calculate_dislike(&figure1, &hole1) == 20.0);
+    assert!(calculate_dislike(&figure2, &hole1) == 0.0);
+    assert!(calculate_dislike(&figure3, &hole1) == 18.0);
 }
