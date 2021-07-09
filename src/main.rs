@@ -118,11 +118,26 @@ fn figure_to_pose_json(figure: &Figure) -> String {
     serde_json::to_string(&pose_json).unwrap()
 }
 
+fn squared_distance(a: &Point, b: &Point) -> f64 {
+    let dx = a.x() - b.x();
+    let dy = a.y() - b.y();
+    dx*dx + dy*dy
+}
+
+fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
+    let mut s = 0.0;
+    for h in hole.exterior().points_iter() {
+        s += figure.vertices.iter().map(|v| squared_distance(v, &h)).fold(0.0/0.0, |m, x| x.max(m));
+    }
+    s
+}
+
 fn main() {
     let input = read_input();
     if let Some(solution) = try_all_translations(&input) {
         let j = figure_to_pose_json(&solution);
         println!("{}", j);
+        eprintln!("dislike = {}", calculate_dislike(&solution, &input.hole));
     } else {
         eprintln!("No solutions");
     }
