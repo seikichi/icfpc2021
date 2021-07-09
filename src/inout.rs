@@ -15,13 +15,6 @@ pub struct FigureJSON {
     pub vertices: Vec<Vec<i64>>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Input {
-    pub hole: Polygon,
-    pub figure: Figure,
-    pub epsilon: i64,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PoseJSON {
     pub vertices: Vec<Vec<i64>>,

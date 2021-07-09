@@ -21,6 +21,13 @@ pub struct Figure {
     pub vertices: Vec<Point>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Input {
+    pub hole: Polygon,
+    pub figure: Figure,
+    pub epsilon: i64,
+}
+
 pub fn squared_distance(a: &Point, b: &Point) -> f64 {
     let dx = a.x() - b.x();
     let dy = a.y() - b.y();
