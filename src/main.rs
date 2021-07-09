@@ -1,6 +1,6 @@
+use geo::algorithm::contains::Contains;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
-use geo::algorithm::contains::Contains;
 
 type Point = geo::Point<f64>;
 type Polygon = geo::Polygon<f64>;
@@ -101,21 +101,49 @@ fn translate(src: &Figure, dx: f64, dy: f64, dest: &mut Figure) {
 
 fn try_all_translations(input: &Input) -> Option<Figure> {
     let mut figure = input.figure.clone();
+    let mut best_figure = None;
+    let mut best_dislike = 1e20;
     for dy in -100..=100 {
         for dx in -100..=100 {
             translate(&input.figure, dx as f64, dy as f64, &mut figure);
             if does_figure_fit_in_hole(&figure, &input.hole) {
-                return Some(figure);
+                let dislike = calculate_dislike(&figure, &input.hole);
+                if dislike < best_dislike {
+                    best_figure = Some(figure.clone());
+                    best_dislike = dislike;
+                }
             }
         }
     }
-    None
+    best_figure
 }
 
 fn figure_to_pose_json(figure: &Figure) -> String {
-    let vertices: Vec<Vec<i64>> = figure.vertices.iter().map(|p| vec![p.x() as i64, p.y() as i64]).collect();
+    let vertices: Vec<Vec<i64>> = figure
+        .vertices
+        .iter()
+        .map(|p| vec![p.x() as i64, p.y() as i64])
+        .collect();
     let pose_json = PoseJSON { vertices };
     serde_json::to_string(&pose_json).unwrap()
+}
+
+fn squared_distance(a: &Point, b: &Point) -> f64 {
+    let dx = a.x() - b.x();
+    let dy = a.y() - b.y();
+    dx * dx + dy * dy
+}
+
+fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
+    let mut s = 0.0;
+    for h in hole.exterior().points_iter() {
+        s += figure
+            .vertices
+            .iter()
+            .map(|v| squared_distance(v, &h))
+            .fold(0.0 / 0.0, |m, x| x.max(m));
+    }
+    s
 }
 
 fn main() {
@@ -123,6 +151,7 @@ fn main() {
     if let Some(solution) = try_all_translations(&input) {
         let j = figure_to_pose_json(&solution);
         println!("{}", j);
+        eprintln!("dislike = {}", calculate_dislike(&solution, &input.hole));
     } else {
         eprintln!("No solutions");
     }
