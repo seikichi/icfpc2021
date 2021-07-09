@@ -44,6 +44,11 @@ struct Figure {
     vertices: Vec<Point>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct PoseJSON {
+    vertices: Vec<Vec<i64>>,
+}
+
 fn read_input() -> Input {
     let mut data = String::new();
     std::io::stdin().read_to_string(&mut data).unwrap();
@@ -107,8 +112,18 @@ fn try_all_translations(input: &Input) -> Option<Figure> {
     None
 }
 
+fn figure_to_pose_json(figure: &Figure) -> String {
+    let vertices: Vec<Vec<i64>> = figure.vertices.iter().map(|p| vec![p.x() as i64, p.y() as i64]).collect();
+    let pose_json = PoseJSON { vertices };
+    serde_json::to_string(&pose_json).unwrap()
+}
+
 fn main() {
     let input = read_input();
-    let solution = try_all_translations(&input);
-    println!("solution = {:?}", &solution)
+    if let Some(solution) = try_all_translations(&input) {
+        let j = figure_to_pose_json(&solution);
+        println!("{}", j);
+    } else {
+        eprintln!("No solutions");
+    }
 }
