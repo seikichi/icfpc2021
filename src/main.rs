@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::io::Read;
+use geo::algorithm::contains::Contains;
 
 type Point = geo::Point<f64>;
 type Polygon = geo::Polygon<f64>;
+type Line = geo::Line<f64>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InputJSON {
@@ -73,7 +75,40 @@ fn read_input() -> Input {
     }
 }
 
+fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
+    for e in figure.edges.iter() {
+        let p1 = figure.vertices[e.v];
+        let p2 = figure.vertices[e.w];
+        let line = Line::new(p1, p2);
+        if !hole.contains(&line) {
+            return false;
+        }
+    }
+    true
+}
+
+fn translate(src: &Figure, dx: f64, dy: f64, dest: &mut Figure) {
+    for i in 0..src.vertices.len() {
+        let v = src.vertices[i];
+        dest.vertices[i] = Point::new(v.x() + dx, v.y() + dy);
+    }
+}
+
+fn try_all_translations(input: &Input) -> Option<Figure> {
+    let mut figure = input.figure.clone();
+    for dy in -100..=100 {
+        for dx in -100..=100 {
+            translate(&input.figure, dx as f64, dy as f64, &mut figure);
+            if does_figure_fit_in_hole(&figure, &input.hole) {
+                return Some(figure);
+            }
+        }
+    }
+    None
+}
+
 fn main() {
     let input = read_input();
-    println!("input = {:?}", input);
+    let solution = try_all_translations(&input);
+    println!("solution = {:?}", &solution)
 }
