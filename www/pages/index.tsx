@@ -1,9 +1,30 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import { promises as fs } from 'fs'
+import path from "path";
+import Link from 'next/link'
 
-export default function Home() {
+interface Props {
+  ids: readonly string[];
+}
+
+export async function getStaticProps() {
+  const dir = path.join(process.cwd(), '..', 'solutions');
+  const files = await fs.readdir(dir);
+  const ids = files.map(f => path.basename(f, '.solution'));
+
+  return {
+    props: { ids }
+  }
+}
+
+export default function Home({ ids }: Props) {
   return (
-    <div>Hello, world!</div>
+    <>
+      <h3>Solutions</h3>
+      <ul>
+        {
+          ids.map(id => <li key={id}><Link href={`/problems/${id}`}><a>{id}</a></Link></li>)
+        }
+      </ul>
+    </>
   )
 }
