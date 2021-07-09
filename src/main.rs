@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::io::Read;
+
+type Point = geo::Point<f64>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InputJSON {
@@ -13,30 +14,6 @@ struct InputJSON {
 struct FigureJSON {
     edges: Vec<Vec<usize>>,
     vertices: Vec<Vec<i64>>,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-struct Point {
-    x: i64,
-    y: i64,
-}
-
-impl Point {
-    fn new(x: i64, y: i64) -> Point {
-        Point { x, y }
-    }
-
-    fn squared_distance(&self, other: &Point) -> i64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        dx * dx + dy * dy
-    }
-}
-
-impl fmt::Display for Point {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +50,7 @@ fn main() {
     let hole: Vec<Point> = input_json
         .hole
         .iter()
-        .map(|p| Point::new(p[0], p[1]))
+        .map(|p| Point::new(p[0] as f64, p[1] as f64))
         .collect();
     let edges: Vec<Edge> = input_json
         .figure
@@ -85,7 +62,7 @@ fn main() {
         .figure
         .vertices
         .iter()
-        .map(|p| Point::new(p[0], p[1]))
+        .map(|p| Point::new(p[0] as f64, p[1] as f64))
         .collect();
 
     let input = Input {
