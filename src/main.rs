@@ -101,15 +101,21 @@ fn translate(src: &Figure, dx: f64, dy: f64, dest: &mut Figure) {
 
 fn try_all_translations(input: &Input) -> Option<Figure> {
     let mut figure = input.figure.clone();
+    let mut best_figure = None;
+    let mut best_dislike = 1e20;
     for dy in -100..=100 {
         for dx in -100..=100 {
             translate(&input.figure, dx as f64, dy as f64, &mut figure);
             if does_figure_fit_in_hole(&figure, &input.hole) {
-                return Some(figure);
+                let dislike = calculate_dislike(&figure, &input.hole);
+                if dislike < best_dislike {
+                    best_figure = Some(figure.clone());
+                    best_dislike = dislike;
+                }
             }
         }
     }
-    None
+    best_figure
 }
 
 fn figure_to_pose_json(figure: &Figure) -> String {
