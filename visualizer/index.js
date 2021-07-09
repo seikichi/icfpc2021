@@ -12,7 +12,19 @@ let solution = {
 
 
 function render(canvas, problem, solution) {
+
     const ctx = canvas.getContext('2d')
+
+    let size = -1
+    for (let [x, y] of [...problem.hole, ...problem.figure.vertices]) {
+        size = Math.max(size, x, y)
+    }
+    size += 10
+    const scale = canvas.width / (size * 1.0)
+
+    ctx.resetTransform()
+    ctx.scale(scale, scale)
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#00000066"
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -37,7 +49,6 @@ function render(canvas, problem, solution) {
     }
     ctx.strokeStyle = "#ff0000"
     ctx.stroke()
-
 }
 
 const canvas = document.getElementById("pose")
