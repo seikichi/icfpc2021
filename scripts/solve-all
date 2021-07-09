@@ -1,0 +1,11 @@
+#!/bin/bash
+cd "$(git rev-parse --show-toplevel)"
+for i in $(seq 1 59); do
+	echo "problem ${i}"
+	if target/release/icfpc2021 < problems/${i}.problem > tmp; then
+		mv tmp solutions/${i}.solution
+	else
+		rm tmp
+	fi
+done
+	
