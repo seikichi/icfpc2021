@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::Read;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +30,12 @@ impl Point {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         dx*dx + dy*dy
+    }
+}
+
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
     }
 }
 
