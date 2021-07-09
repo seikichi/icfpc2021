@@ -2,54 +2,54 @@ use geo::algorithm::contains::Contains;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 
-type Point = geo::Point<f64>;
-type Polygon = geo::Polygon<f64>;
-type Line = geo::Line<f64>;
+pub type Point = geo::Point<f64>;
+pub type Polygon = geo::Polygon<f64>;
+pub type Line = geo::Line<f64>;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct InputJSON {
-    hole: Vec<Vec<i64>>,
-    figure: FigureJSON,
-    epsilon: i64,
+pub struct InputJSON {
+    pub hole: Vec<Vec<i64>>,
+    pub figure: FigureJSON,
+    pub epsilon: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct FigureJSON {
-    edges: Vec<Vec<usize>>,
-    vertices: Vec<Vec<i64>>,
+pub struct FigureJSON {
+    pub edges: Vec<Vec<usize>>,
+    pub vertices: Vec<Vec<i64>>,
 }
 
 #[derive(Debug, Clone)]
-struct Input {
-    hole: Polygon,
-    figure: Figure,
-    epsilon: i64,
+pub struct Input {
+    pub hole: Polygon,
+    pub figure: Figure,
+    pub epsilon: i64,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-struct Edge {
-    v: usize,
-    w: usize,
+pub struct Edge {
+    pub v: usize,
+    pub w: usize,
 }
 
 impl Edge {
-    fn new(v: usize, w: usize) -> Edge {
+    pub fn new(v: usize, w: usize) -> Edge {
         Edge { v, w }
     }
 }
 
 #[derive(Debug, Clone)]
-struct Figure {
-    edges: Vec<Edge>,
-    vertices: Vec<Point>,
+pub struct Figure {
+    pub edges: Vec<Edge>,
+    pub vertices: Vec<Point>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct PoseJSON {
-    vertices: Vec<Vec<i64>>,
+pub struct PoseJSON {
+    pub vertices: Vec<Vec<i64>>,
 }
 
-fn read_input() -> Input {
+pub fn read_input() -> Input {
     let mut data = String::new();
     std::io::stdin().read_to_string(&mut data).unwrap();
 
@@ -80,7 +80,7 @@ fn read_input() -> Input {
     }
 }
 
-fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
+pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     for e in figure.edges.iter() {
         let p1 = figure.vertices[e.v];
         let p2 = figure.vertices[e.w];
@@ -154,7 +154,7 @@ fn try_all_translations_rotations_and_mirrors(
     best_figure.map(|f| (f, best_dislike))
 }
 
-fn figure_to_pose_json(figure: &Figure) -> String {
+pub fn figure_to_pose_json(figure: &Figure) -> String {
     let vertices: Vec<Vec<i64>> = figure
         .vertices
         .iter()
@@ -164,13 +164,13 @@ fn figure_to_pose_json(figure: &Figure) -> String {
     serde_json::to_string(&pose_json).unwrap()
 }
 
-fn squared_distance(a: &Point, b: &Point) -> f64 {
+pub fn squared_distance(a: &Point, b: &Point) -> f64 {
     let dx = a.x() - b.x();
     let dy = a.y() - b.y();
     dx * dx + dy * dy
 }
 
-fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
+pub fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
     let mut s = 0.0;
     for h in hole.exterior().points_iter().skip(1) {
         s += figure
@@ -196,6 +196,26 @@ fn main() {
     }
 }
 
+#[test]
+fn test_contains() {
+    let l1 = Line::new(Point::new(0.0, 10.0), Point::new(20.0, 10.0));
+    // let l2 = Line::new(Point::new(13.0, 10.0), Point::new(20.0, 10.0));
+    let hole2 = Polygon::new(
+        geo::LineString::from(vec![
+            Point::new(0.0, 0.0),
+            Point::new(10.0, 0.0),
+            Point::new(10.0, 10.0),
+            Point::new(20.0, 10.0),
+            Point::new(20.0, 20.0),
+            Point::new(0.0, 20.0),
+            Point::new(0.0, 0.0),
+        ]),
+        vec![],
+    );
+    assert!(hole2.contains(&l1));
+    // bug?
+    // assert!(hole2.contains(&l2));
+}
 #[test]
 fn test_calculate_dislike() {
     let figure1 = Figure {
