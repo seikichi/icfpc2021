@@ -190,6 +190,7 @@ fn main() {
         eprintln!("dislike = {}", dislike);
     } else {
         eprintln!("No solutions");
+        std::process::exit(1);
     }
 }
 
