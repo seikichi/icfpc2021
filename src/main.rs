@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Read;
 
 type Point = geo::Point<f64>;
+type Polygon = geo::Polygon<f64>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InputJSON {
@@ -18,7 +19,7 @@ struct FigureJSON {
 
 #[derive(Debug, Clone)]
 struct Input {
-    hole: Vec<Point>,
+    hole: Polygon,
     figure: Figure,
     epsilon: i64,
 }
@@ -41,16 +42,16 @@ struct Figure {
     vertices: Vec<Point>,
 }
 
-fn main() {
+fn read_input() -> Input {
     let mut data = String::new();
     std::io::stdin().read_to_string(&mut data).unwrap();
 
     let input_json: InputJSON = serde_json::from_str(&data).expect("failed to parse input as JSON");
 
-    let hole: Vec<Point> = input_json
+    let hole: Vec<(f64, f64)> = input_json
         .hole
         .iter()
-        .map(|p| Point::new(p[0] as f64, p[1] as f64))
+        .map(|p| (p[0] as f64, p[1] as f64))
         .collect();
     let edges: Vec<Edge> = input_json
         .figure
@@ -65,11 +66,14 @@ fn main() {
         .map(|p| Point::new(p[0] as f64, p[1] as f64))
         .collect();
 
-    let input = Input {
-        hole,
+    Input {
+        hole: Polygon::new(geo::LineString::from(hole), vec![]),
         figure: Figure { edges, vertices },
         epsilon: input_json.epsilon,
-    };
+    }
+}
 
+fn main() {
+    let input = read_input();
     println!("input = {:?}", input);
 }
