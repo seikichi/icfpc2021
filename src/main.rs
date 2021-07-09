@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::io::Read;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InputJSON {
@@ -29,7 +29,7 @@ impl Point {
     fn squared_distance(&self, other: &Point) -> i64 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
-        dx*dx + dy*dy
+        dx * dx + dy * dy
     }
 }
 
@@ -70,16 +70,27 @@ fn main() {
 
     let input_json: InputJSON = serde_json::from_str(&data).expect("failed to parse input as JSON");
 
-    let hole: Vec<Point> = input_json.hole.iter().map(|p| Point::new(p[0], p[1])).collect();
-    let edges: Vec<Edge> = input_json.figure.edges.iter().map(|e| Edge::new(e[0], e[1])).collect();
-    let vertices: Vec<Point> = input_json.figure.vertices.iter().map(|p| Point::new(p[0], p[1])).collect();
+    let hole: Vec<Point> = input_json
+        .hole
+        .iter()
+        .map(|p| Point::new(p[0], p[1]))
+        .collect();
+    let edges: Vec<Edge> = input_json
+        .figure
+        .edges
+        .iter()
+        .map(|e| Edge::new(e[0], e[1]))
+        .collect();
+    let vertices: Vec<Point> = input_json
+        .figure
+        .vertices
+        .iter()
+        .map(|p| Point::new(p[0], p[1]))
+        .collect();
 
-    let input = Input{
+    let input = Input {
         hole,
-        figure: Figure{
-            edges,
-            vertices,
-        },
+        figure: Figure { edges, vertices },
         epsilon: input_json.epsilon,
     };
 
