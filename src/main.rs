@@ -86,7 +86,9 @@ fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
         let p2 = figure.vertices[e.w];
         let line = Line::new(p1, p2);
         if !hole.contains(&line) {
-            return false;
+            if !hole.exterior().contains(&line) {
+                return false;
+            }
         }
     }
     true
