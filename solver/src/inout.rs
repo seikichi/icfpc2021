@@ -1,6 +1,7 @@
 use crate::common::*;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InputJSON {
@@ -20,10 +21,7 @@ pub struct PoseJSON {
     pub vertices: Vec<Vec<i64>>,
 }
 
-pub fn read_input() -> Input {
-    let mut data = String::new();
-    std::io::stdin().read_to_string(&mut data).unwrap();
-
+pub fn parse_input(data: &str) -> Input {
     let input_json: InputJSON = serde_json::from_str(&data).expect("failed to parse input as JSON");
 
     let hole: Vec<(f64, f64)> = input_json
@@ -49,6 +47,22 @@ pub fn read_input() -> Input {
         figure: Figure { edges, vertices },
         epsilon: input_json.epsilon,
     }
+}
+
+pub fn load_input(path: &Path) -> Input {
+    let file = std::fs::File::open(path).expect(&format!("can't open {}", path.display()));
+    let mut buf_reader = std::io::BufReader::new(file);
+    let mut data = String::new();
+    buf_reader
+        .read_to_string(&mut data)
+        .expect(&format!("can't load {}", path.display()));
+    parse_input(&data)
+}
+
+pub fn read_input() -> Input {
+    let mut data = String::new();
+    std::io::stdin().read_to_string(&mut data).unwrap();
+    parse_input(&data)
 }
 
 #[allow(dead_code)]
