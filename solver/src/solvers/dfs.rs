@@ -1,14 +1,14 @@
 use crate::common::*;
 use geo::algorithm::centroid::Centroid;
 use geo::algorithm::contains::Contains;
-use rand::rngs::SmallRng;
-use rand::seq::SliceRandom;
-use rand::{Rng, SeedableRng};
+// use rand::rngs::SmallRng;
+// use rand::seq::SliceRandom;
+// use rand::{Rng, SeedableRng};
 
-static SEED: [u8; 32] = [
-    0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
-    0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
-];
+// static SEED: [u8; 32] = [
+//     0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
+//     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
+// ];
 
 struct Solver {
     original_vertices: Vec<Point>, // readonly
@@ -16,7 +16,7 @@ struct Solver {
     epsilon: i64,                  // readonly
     hole: Polygon,                 // readonly
     holl_points: Vec<Point>,       // readonly
-    rng: SmallRng,                 // mutable
+    // rng: SmallRng,                 // mutable
 }
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
@@ -26,7 +26,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
         epsilon: input.epsilon,
         hole: input.hole.clone(),
         holl_points: all_point_in_hole(&input.hole),
-        rng: SmallRng::from_seed(SEED),
+        // rng: SmallRng::from_seed(SEED),
     };
     let mut vertices = input.figure.vertices.clone();
     let mut visited = vec![false; input.figure.vertices.len()];
@@ -102,7 +102,7 @@ impl Solver {
         let src = order[i];
         visited[src] = true;
 
-        let mut holl_points = self.holl_points.clone();
+        let holl_points = self.holl_points.clone();
         //holl_points.shuffle(&mut self.rng);
         for &p in holl_points.iter() {
             vertices[src] = p;
