@@ -5,13 +5,16 @@
   "main": "index.js",
   "scripts": {
     "put-new-problems": "ts-node put_new_problems.ts",
-    "put-existing-solutions": "ts-node put_existing_solutions.ts"
+    "put-existing-solutions": "ts-node put_existing_solutions.ts",
+    "submit": "ts-node submit.ts"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/node": "^16.3.1",
+    "@types/node-fetch": "^2.5.11",
     "aws-sdk": "^2.943.0",
+    "node-fetch": "^2.6.1",
     "ts-node": "^10.1.0",
     "typescript": "^4.3.5"
   }
