@@ -1,6 +1,7 @@
 use crate::common::*;
 use std::time::{Duration, Instant};
 use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 static SEED: [u8; 32] = [
     0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
@@ -63,8 +64,7 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
 
         // move to neighbor
         let i = rng.gen::<usize>() % n;
-        let candidates = make_next_candidates(i, original_vertices, &input.hole, input.epsilon, &solution, &out_edges);
-        let candidate = candidates[rng.gen_range(0..candidates.len())];
+        let candidate = make_next_candidates(i, original_vertices, &input.hole, input.epsilon, &solution, &out_edges, &mut rng);
 
         // calculate score. FIXME: slow
         let old = solution[i];
@@ -104,13 +104,15 @@ fn make_next_candidates(
     epsilon: i64,
     solution: &[Point],
     out_edges: &[Vec<usize>],
-) -> Vec<Point> {
+    rng: &mut SmallRng,
+) -> Point {
     let some_neighbor = out_edges[i][0];
     let original_squared_distance = squared_distance(&original_vertices[i], &original_vertices[some_neighbor]);
     let ring = Ring::from_epsilon(solution[some_neighbor], epsilon, original_squared_distance);
 
-    let mut candidates = vec![];
-    for &p in ring_points(&ring).iter() {
+    let mut points = ring_points(&ring);
+    points.shuffle(rng);
+    for &p in points.iter() {
         let ok = out_edges[i].iter().all(|&dst| {
             is_allowed_distance(
                     &p,
@@ -121,9 +123,8 @@ fn make_next_candidates(
             ) && does_line_fit_in_hole(&p, &solution[dst], hole)
         });
         if ok {
-            candidates.push(p);
+            return p;
         }
     }
-
-    candidates
+    unreachable!()
 }
