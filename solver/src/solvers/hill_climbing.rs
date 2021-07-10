@@ -21,7 +21,7 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
         iter += 1;
         if iter % 100 == 0 {
             let elapsed = Instant::now() - start_at;
-            if elapsed >= time_limit {
+            if current_score == 0.0 || elapsed >= time_limit {
                 return (solution, current_score);
             }
         }
