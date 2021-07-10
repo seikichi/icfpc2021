@@ -28,27 +28,7 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
 
         // modify solution
         let i = rng.gen::<usize>() % n;
-
-        let some_neighbor = out_edges[i][0];
-        let original_squared_distance = squared_distance(&original_vertices[i], &original_vertices[some_neighbor]);
-        let ring = Ring::from_epsilon(solution[some_neighbor], input.epsilon, original_squared_distance);
-
-        let mut candidates = vec![];
-        for &p in ring_points(&ring).iter() {
-            let ok = out_edges[i].iter().all(|&dst| {
-                is_allowed_distance(
-                        &p,
-                        &solution[dst],
-                        &input.figure.vertices[i],
-                        &input.figure.vertices[dst],
-                        input.epsilon,
-                ) && does_line_fit_in_hole(&p, &solution[dst], &input.hole)
-            });
-            if ok {
-                candidates.push(p);
-            }
-        }
-
+        let candidates = make_next_candidates(i, original_vertices, &input.hole, input.epsilon, &solution, &out_edges);
         let candidate = candidates[rng.gen_range(0..candidates.len())];
 
         // calculate score. FIXME: slow
@@ -64,4 +44,35 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
             solution[i] = old;
         }
     }
+}
+
+fn make_next_candidates(
+    i: usize,
+    original_vertices: &[Point],
+    hole: &Polygon,
+    epsilon: i64,
+    solution: &[Point],
+    out_edges: &[Vec<usize>],
+) -> Vec<Point> {
+    let some_neighbor = out_edges[i][0];
+    let original_squared_distance = squared_distance(&original_vertices[i], &original_vertices[some_neighbor]);
+    let ring = Ring::from_epsilon(solution[some_neighbor], epsilon, original_squared_distance);
+
+    let mut candidates = vec![];
+    for &p in ring_points(&ring).iter() {
+        let ok = out_edges[i].iter().all(|&dst| {
+            is_allowed_distance(
+                    &p,
+                    &solution[dst],
+                    &original_vertices[i],
+                    &original_vertices[dst],
+                    epsilon,
+            ) && does_line_fit_in_hole(&p, &solution[dst], hole)
+        });
+        if ok {
+            candidates.push(p);
+        }
+    }
+
+    candidates
 }
