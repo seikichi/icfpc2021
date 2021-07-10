@@ -69,11 +69,18 @@ pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     true
 }
 
-pub fn does_pose_fit_in_hole(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon) -> bool {
+pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, epsilon: i64) -> bool {
     let f = Figure {
         edges: figure.edges.clone(),
         vertices: vertices.clone(),
     };
+    for e in figure.edges.iter() {
+        let p1 = vertices[e.v];
+        let p2 = vertices[e.w];
+        let original_p1 = figure.vertices[e.v];
+        let original_p2 = figure.vertices[e.w];
+        if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon) { return false; }
+    }
     return does_figure_fit_in_hole(&f, &hole);
 }
 
