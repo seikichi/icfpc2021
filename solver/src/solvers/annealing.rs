@@ -15,6 +15,9 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
     let original_vertices = &input.figure.vertices;
     let start_at = Instant::now();
 
+    let mut best_solution = solution.clone();
+    let mut best_score = current_score;
+
     let initial_temperature = 10000.0;
     let mut temperature = initial_temperature;
 
@@ -24,8 +27,8 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
         iter += 1;
         if iter % 100 == 0 {
             let elapsed = Instant::now() - start_at;
-            if current_score == 0.0 || elapsed >= time_limit {
-                return (solution, current_score);
+            if best_score == 0.0 || elapsed >= time_limit {
+                return (best_solution, best_score);
             }
 
             // tweak temperature
@@ -60,6 +63,11 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
         } else {
             // reject candidate
             solution[i] = old;
+        }
+
+        if current_score < best_score {
+            best_score = current_score;
+            best_solution = solution.clone();
         }
     }
 }
