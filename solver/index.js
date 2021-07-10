@@ -26,6 +26,8 @@ function calculateDislikes(problem, solution) {
 exports.handler = async function (event, context) {
     const SOLVER_PATH = '/code/target/release/icfpc2021';
 
+    const MAX_MINUTES = 3; // TODO
+
     const result = await client.scan({
         TableName,
         ExpressionAttributeValues: {
@@ -61,7 +63,13 @@ exports.handler = async function (event, context) {
     }).promise();
 
     // Calc
-    const solution = JSON.parse(child_process.execSync(SOLVER_PATH, { input: JSON.stringify(problem) }));
+    const solution = JSON.parse(child_process.execSync(SOLVER_PATH, {
+        input: JSON.stringify(problem),
+        env: {
+            HILL_CLIMBING_TIME_LIMIT_SECONDS: `${MAX_MINUTES * 60}`,
+            RUST_BACKTRACE: '1'
+        }
+    }));
     const dislikes = calculateDislikes(problem, solution);
     console.log(`Dislikes = ${dislikes}, solution = ${JSON.stringify(solution)}`);
 
