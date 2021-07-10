@@ -40,15 +40,6 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     }
 }
 
-fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
-    let mut out_edges = vec![vec![]; n_vertices];
-    for e in edges.iter() {
-        out_edges[e.v].push(e.w);
-        out_edges[e.w].push(e.v);
-    }
-    out_edges
-}
-
 impl Solver {
     /*
     fn dfs(&self, i: usize, vertices: &mut [Point], visited: &mut [bool]) {

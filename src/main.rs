@@ -3,18 +3,20 @@ mod inout;
 mod solvers;
 
 use inout::*;
+use std::time::Duration;
 
 fn main() {
     let input = read_input();
-    //if let Some((solution, dislike)) = solvers::orthgonal::solve(&input) {
-    if let Some((solution, dislike)) = solvers::dfs::solve(&input) {
-        let j = vertices_to_pose_json(&solution);
+    if let Some((solution1, dislike1)) = solvers::dfs::solve(&input) {
+        eprintln!("dfs: dislike = {}", dislike1);
+        let (solution2, dislike2) = solvers::hill_climbing::solve(&input, solution1, Duration::from_millis(2000));
+        let j = vertices_to_pose_json(&solution2);
         println!("{}", j);
-        eprintln!("dislike = {}", dislike);
-        if !common::does_pose_fit_in_hole(&solution, &input.figure, &input.hole) {
+        if !common::does_pose_fit_in_hole(&solution2, &input.figure, &input.hole) {
             eprintln!("Pose is invalid");
             std::process::exit(1);
         }
+        eprintln!("hill_climbing: dislike = {}", dislike2);
     } else {
         eprintln!("No solutions");
         std::process::exit(1);

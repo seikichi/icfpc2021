@@ -331,3 +331,12 @@ fn test_each_ring_points() {
     assert!(points7[3] == Point::new(1.0, 0.0));
     assert!(points7[4] == Point::new(0.0, 1.0));
 }
+
+pub fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
+    let mut out_edges = vec![vec![]; n_vertices];
+    for e in edges.iter() {
+        out_edges[e.v].push(e.w);
+        out_edges[e.w].push(e.v);
+    }
+    out_edges
+}
