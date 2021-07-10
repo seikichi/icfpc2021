@@ -58,7 +58,7 @@ export async function getStaticProps() {
   const rows = problems.Items?.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
     return {
       id: item.ProblemId,
-      dislike: item.Dislikes || -1,
+      dislike: typeof(item.Dislikes) === "number" ? item.Dislikes : -1,
       problem: item.Problem as Problem,
       solution: item.Solution ? item.Solution as Solution : null,
       minimalDislike: 0,
