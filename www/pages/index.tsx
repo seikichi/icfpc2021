@@ -13,6 +13,8 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 
+import AWS from "aws-sdk"
+
 type Point = [number, number];
 
 interface Problem {
@@ -48,28 +50,20 @@ interface TableRowData {
 }
 
 export async function getStaticProps() {
-  const dir = path.join(process.cwd(), '..', 'problems');
-  const files = fs.readdirSync(dir);
-  const ids: number[] = files.map(f => parseInt(path.basename(f, '.problem'), 10));
+  AWS.config.update({ region: 'ap-northeast-1' })
+  const docClient = new AWS.DynamoDB.DocumentClient()
+  const TableName = "Problems"
+  const problems = await docClient.scan({ TableName }).promise()
 
-  ids.sort((a, b) => a - b);
-  const rows = ids.map((id): TableRowData => {
-    const problemPath = path.join(process.cwd(), '..', 'problems', `${id}.problem`)
-    const problem = JSON.parse(fs.readFileSync(problemPath, 'utf-8')) as Problem;
-
-    const solutionPath = path.join(process.cwd(), '..', 'solutions', `${id}.solution`)
-    const solution = fs.existsSync(solutionPath) ?
-      JSON.parse(fs.readFileSync(solutionPath, 'utf-8')) as Solution
-      : null;
-
+  const rows = problems.Items?.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
     return {
-      id,
-      dislike: 0,
+      id: item.ProblemId,
+      dislike: item.Dislikes || -1,
+      problem: item.Problem as Problem,
+      solution: item.Solution ? item.Solution as Solution : null,
       minimalDislike: 0,
       score: 0,
-      problem,
-      solution,
-    };
+    }
   })
 
   return {
