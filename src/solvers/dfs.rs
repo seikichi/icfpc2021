@@ -1,4 +1,5 @@
 use crate::common::*;
+use geo::algorithm::centroid::Centroid;
 use geo::algorithm::contains::Contains;
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
@@ -166,5 +167,7 @@ fn all_point_in_hole(hole: &Polygon) -> Vec<Point> {
     each_point_in_hole(hole, |p| {
         ps.push(p);
     });
+    let c = hole.centroid().unwrap();
+    ps.sort_by_key(|p| squared_distance(p, &c) as i64);
     return ps;
 }
