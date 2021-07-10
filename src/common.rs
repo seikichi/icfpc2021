@@ -113,3 +113,40 @@ fn test_calculate_dislike() {
     assert!(calculate_dislike(&figure2, &hole1) == 0.0);
     assert!(calculate_dislike(&figure3, &hole1) == 18.0);
 }
+
+struct Ring {
+    center: Point,
+    inner_radius: f64,
+    outer_radius: f64,
+}
+
+fn pow2(x: f64) -> f64 { x * x }
+
+fn each_ring_points(ring: Ring, mut f: impl FnMut(Point)) {
+    let y_min = (ring.center.y() - ring.outer_radius).ceil() as i64;
+    let y_max = (ring.center.y() - ring.outer_radius).floor() as i64;
+    let iy_min = (ring.center.y() - ring.inner_radius).ceil() as i64;
+    let iy_max = (ring.center.y() - ring.inner_radius).floor() as i64;
+    for y in y_min..=y_max {
+        // (x - cx)^2 + (y - cy)^2 = r^2
+        // x = cx +- sqrt(r^2 - (y - cy)^2)
+        let s = (pow2(ring.outer_radius) - pow2(y as f64 - ring.center.y())).sqrt();
+        let x_min = (ring.center.x() - s).ceil() as i64;
+        let x_max = (ring.center.x() + s).floor() as i64;
+        if iy_min <= y && y <= iy_max {
+            let is = (pow2(ring.inner_radius) - pow2(y as f64 - ring.center.y())).sqrt();
+            let ix_min = (ring.center.x() - is).ceil() as i64;
+            let ix_max = (ring.center.x() + is).floor() as i64;
+            for x in x_min..=ix_min {
+                f(Point::new(x as f64, y as f64));
+            }
+            for x in ix_max..=x_max {
+                f(Point::new(x as f64, y as f64));
+            }
+        } else {
+            for x in x_min..=x_max {
+                f(Point::new(x as f64, y as f64));
+            }
+        }
+    }
+}
