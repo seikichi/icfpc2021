@@ -49,6 +49,7 @@ pub fn parse_input(data: &str) -> Input {
     }
 }
 
+#[allow(dead_code)]
 pub fn load_input(path: &Path) -> Input {
     let file = std::fs::File::open(path).expect(&format!("can't open {}", path.display()));
     let mut buf_reader = std::io::BufReader::new(file);
