@@ -6,6 +6,13 @@ use inout::*;
 use std::time::Duration;
 
 fn main() {
+    let disable_dfs_centroid = {
+        if let Ok(_s) = std::env::var("DISABLE_DFS_CENTROID") {
+            true
+        } else {
+            false
+        }
+    };
     let hill_climbing_time_limit = {
         if let Ok(s) = std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS") {
             let f: f64 = s.parse().expect("Invalid HILL_CLIMBING_TIME_LIMIT_SECONDS");
@@ -17,7 +24,7 @@ fn main() {
     eprintln!("hill_climbing_time_limit = {:?}", hill_climbing_time_limit);
 
     let input = read_input();
-    if let Some((solution1, dislike1)) = solvers::dfs::solve(&input) {
+    if let Some((solution1, dislike1)) = solvers::dfs::solve(&input, disable_dfs_centroid) {
         eprintln!("dfs: dislike = {}", dislike1);
 
         // orthgonal1
