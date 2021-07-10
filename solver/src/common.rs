@@ -84,6 +84,18 @@ pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, e
     return does_figure_fit_in_hole(&f, &hole);
 }
 
+#[test]
+pub fn test_does_valid_pose() {
+    let mut ps1 = vec![];
+    ps1.push(Point::new(34.0,22.0));
+    ps1.push(Point::new(10.0,24.0));
+    ps1.push(Point::new(11.0,21.0));
+    ps1.push(Point::new(23.0,5.0));
+    ps1.push(Point::new(0.0,0.0));
+    let input = crate::inout::parse_input(&r#"{"hole":[[23,0],[32,2],[24,6],[31,9],[36,12],[36,26],[29,18],[24,22],[21,27],[30,32],[18,34],[10,38],[12,30],[6,28],[0,32],[0,20],[8,22],[5,14],[1,6],[0,0],[6,0],[12,3],[17,0]],"epsilon":15010,"figure":{"edges":[[0,1],[0,2],[1,3],[2,4],[3,4]],"vertices":[[0,7],[0,31],[22,0],[22,38],[36,19]]}}"#);
+    assert!(!does_valid_pose(&ps1, &input.figure, &input.hole, input.epsilon));
+}
+
 // #[test]
 // fn test_contains() {
 //     let l1 = Line::new(Point::new(0.0, 10.0), Point::new(20.0, 10.0));
