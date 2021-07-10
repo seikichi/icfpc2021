@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "put-new-problems": "ts-node put_new_problems.ts"
+    "put-new-problems": "ts-node put_new_problems.ts",
+    "put-existing-solutions": "ts-node put_existing_solutions.ts"
   },
   "author": "",
   "license": "ISC",
