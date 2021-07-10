@@ -1,11 +1,20 @@
 use crate::common::*;
 use geo::algorithm::contains::Contains;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
+
+static SEED: [u8; 32] = [
+    0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
+    0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
+];
 
 struct Solver {
     original_vertices: Vec<Point>, // readonly
     out_edges: Vec<Vec<usize>>,    // readonly
     epsilon: i64,                  // readonly
     hole: Polygon,                 // readonly
+    holl_points: Vec<Point>,       // readonly
+    rng: SmallRng,                 // mutable
 }
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
@@ -14,6 +23,8 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
         out_edges: make_out_edges(&input.figure.edges, input.figure.vertices.len()),
         epsilon: input.epsilon,
         hole: input.hole.clone(),
+        holl_points: all_point_in_hole(&input.hole),
+        rng: SmallRng::from_seed(SEED),
     };
     let mut vertices = input.figure.vertices.clone();
     let mut visited = vec![false; input.figure.vertices.len()];
@@ -98,43 +109,35 @@ impl Solver {
         let src = order[i];
         visited[src] = true;
 
-        let ret = each_point_in_hole(&self.hole, |p| {
+        for &p in self.holl_points.iter() {
             vertices[src] = p;
 
             // verify
-            let mut ok = true;
-            for &dst in self.out_edges[src].iter() {
-                if !visited[dst] {
-                    continue;
-                }
-                // check
-                if !is_allowed_distance(
-                    &vertices[src],
-                    &vertices[dst],
-                    &self.original_vertices[src],
-                    &self.original_vertices[dst],
-                    self.epsilon,
-                ) {
-                    ok = false;
-                    break;
-                }
-            }
+            let ok = self.out_edges[src].iter().all(|&dst| {
+                !visited[dst]
+                    || is_allowed_distance(
+                        &vertices[src],
+                        &vertices[dst],
+                        &self.original_vertices[src],
+                        &self.original_vertices[dst],
+                        self.epsilon,
+                    )
+            });
 
             if ok {
                 if self.naive_dfs(i + 1, vertices, visited, order) {
+                    visited[src] = false;
                     return true;
                 }
             }
-
-            false
-        });
+        }
 
         visited[src] = false;
-        ret
+        false
     }
 }
 
-fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point) -> bool) -> bool {
+fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
     let mut min_x: f64 = 1e20;
     let mut max_x: f64 = -1e20;
     let mut min_y: f64 = 1e20;
@@ -149,11 +152,16 @@ fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point) -> bool) -> bool 
         for x in (min_x.ceil() as i64)..=(max_x as i64) {
             let p = Point::new(x as f64, y as f64);
             if hole.contains(&p) || hole.exterior().contains(&p) {
-                if f(p) {
-                    return true;
-                }
+                f(p)
             }
         }
     }
-    false
+}
+
+fn all_point_in_hole(hole: &Polygon) -> Vec<Point> {
+    let mut ps = vec![];
+    each_point_in_hole(hole, |p| {
+        ps.push(p);
+    });
+    return ps;
 }
