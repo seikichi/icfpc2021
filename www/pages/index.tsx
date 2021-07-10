@@ -52,7 +52,8 @@ export async function getStaticProps() {
   const files = fs.readdirSync(dir);
   const ids: number[] = files.map(f => parseInt(path.basename(f, '.problem'), 10));
 
-  const rows = ids.sort().map((id): TableRowData => {
+  ids.sort((a, b) => a - b);
+  const rows = ids.map((id): TableRowData => {
     const problemPath = path.join(process.cwd(), '..', 'problems', `${id}.problem`)
     const problem = JSON.parse(fs.readFileSync(problemPath, 'utf-8')) as Problem;
 
@@ -105,9 +106,9 @@ export default function Home({ rows }: Props) {
       ctx.resetTransform()
       ctx.scale(scale, scale)
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, size, size);
       ctx.fillStyle = "#00000066"
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, size, size);
 
       // hole
       ctx.beginPath()
@@ -166,7 +167,7 @@ export default function Home({ rows }: Props) {
                 <TableCell align="right">{row.minimalDislike}</TableCell>
                 <TableCell align="right">{row.score}</TableCell>
                 <TableCell>
-                  <canvas ref={canvasRefs.current[i]} width={200} height={200}></canvas>
+                  <canvas ref={canvasRefs.current[i]} width={150} height={150}></canvas>
                 </TableCell>
               </TableRow>
             ))}
