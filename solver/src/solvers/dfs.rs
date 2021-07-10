@@ -19,13 +19,13 @@ struct Solver {
     // rng: SmallRng,                 // mutable
 }
 
-pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
+pub fn solve(input: &Input, disable_dfs_centroid: bool) -> Option<(Vec<Point>, f64)> {
     let mut solver = Solver {
         original_vertices: input.figure.vertices.clone(),
         out_edges: make_out_edges(&input.figure.edges, input.figure.vertices.len()),
         epsilon: input.epsilon,
         hole: input.hole.clone(),
-        holl_points: all_point_in_hole(&input.hole),
+        holl_points: all_point_in_hole(&input.hole, disable_dfs_centroid),
         // rng: SmallRng::from_seed(SEED),
     };
     let mut vertices = input.figure.vertices.clone();
@@ -153,12 +153,14 @@ fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
     }
 }
 
-fn all_point_in_hole(hole: &Polygon) -> Vec<Point> {
+fn all_point_in_hole(hole: &Polygon, disable_dfs_centroid: bool) -> Vec<Point> {
     let mut ps = vec![];
     each_point_in_hole(hole, |p| {
         ps.push(p);
     });
-    let c = hole.centroid().unwrap();
-    ps.sort_by_key(|p| squared_distance(p, &c) as i64);
+    if !disable_dfs_centroid {
+      let c = hole.centroid().unwrap();
+      ps.sort_by_key(|p| squared_distance(p, &c) as i64);
+    }
     return ps;
 }
