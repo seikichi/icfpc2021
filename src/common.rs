@@ -121,6 +121,7 @@ pub struct Ring {
 }
 
 impl Ring {
+    #[allow(dead_code)]
     fn new(center: Point, inner_radius: f64, outer_radius: f64) -> Ring {
         assert!(inner_radius <= outer_radius);
         Ring {
@@ -130,6 +131,7 @@ impl Ring {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_epsilon(center: Point, epsilon: i64, original_squared_distance: f64) -> Ring {
         // |d'/d - 1| <= eps/1,000,000
         // -eps/1,000,000 <= d'/d - 1 <= eps/1,000,000
@@ -209,6 +211,7 @@ pub fn each_ring_points(ring: &Ring, mut f: impl FnMut(Point)) {
     }
 }
 
+#[allow(dead_code)]
 pub fn ring_points(ring: &Ring) -> Vec<Point> {
     let mut ps = vec![];
     each_ring_points(ring, |p| ps.push(p));

@@ -1,5 +1,6 @@
 use crate::common::*;
 
+#[allow(dead_code)]
 pub fn solve(input: &Input) -> Option<(Figure, f64)> {
     return try_all_translations_rotations_and_mirrors(&input.figure, &input.hole);
 }

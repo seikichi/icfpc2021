@@ -51,6 +51,7 @@ pub fn read_input() -> Input {
     }
 }
 
+#[allow(dead_code)]
 pub fn figure_to_pose_json(figure: &Figure) -> String {
     let vertices: Vec<Vec<i64>> = figure
         .vertices

@@ -3,7 +3,6 @@ use geo::algorithm::contains::Contains;
 
 struct Solver {
     original_vertices: Vec<Point>, // readonly
-    edges: Vec<Edge>,              // readonly
     out_edges: Vec<Vec<usize>>,    // readonly
     epsilon: i64,                  // readonly
     hole: Polygon,                 // readonly
@@ -12,7 +11,6 @@ struct Solver {
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let solver = Solver {
         original_vertices: input.figure.vertices.clone(),
-        edges: input.figure.edges.clone(),
         out_edges: make_out_edges(&input.figure.edges, input.figure.vertices.len()),
         epsilon: input.epsilon,
         hole: input.hole.clone(),
