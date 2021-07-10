@@ -31,12 +31,11 @@ fn try_all_translations(original_figure: &Figure, hole: &Polygon) -> Option<(Vec
     for dy in -100..=100 {
         for dx in -100..=100 {
             translate(original_figure, dx as f64, dy as f64, &mut figure);
+            let dislike = calculate_dislike(&figure.vertices, hole);
+            if dislike >= best_dislike { continue; }
             if does_figure_fit_in_hole(&figure, hole) {
-                let dislike = calculate_dislike(&figure.vertices, hole);
-                if dislike < best_dislike {
-                    best_vertices= Some(figure.vertices.clone());
-                    best_dislike = dislike;
-                }
+                best_vertices= Some(figure.vertices.clone());
+                best_dislike = dislike;
             }
         }
     }
