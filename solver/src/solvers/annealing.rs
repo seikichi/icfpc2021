@@ -30,7 +30,7 @@ fn ascore(solution: &Vec<Point>, input: &Input) -> f64 {
     vx /= solution.len() as f64;
     vy /= solution.len() as f64;
 
-    dislike / (input.hole.exterior().coords_count() as f64) + (vx + vy) * 1.0
+    dislike / (input.hole.exterior().coords_count() as f64) - (vx + vy) * 1.0
 }
 
 
