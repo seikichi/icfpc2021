@@ -12,7 +12,7 @@ fn main() {
         let (solution2, dislike2) = solvers::hill_climbing::solve(&input, solution1, Duration::from_millis(2000));
         let j = vertices_to_pose_json(&solution2);
         println!("{}", j);
-        if !common::does_pose_fit_in_hole(&solution2, &input.figure, &input.hole) {
+        if !common::does_valid_pose(&solution2, &input.figure, &input.hole, input.epsilon) {
             eprintln!("Pose is invalid");
             std::process::exit(1);
         }

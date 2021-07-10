@@ -69,11 +69,18 @@ pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     true
 }
 
-pub fn does_pose_fit_in_hole(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon) -> bool {
+pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, epsilon: i64) -> bool {
     let f = Figure {
         edges: figure.edges.clone(),
         vertices: vertices.clone(),
     };
+    for e in figure.edges.iter() {
+        let p1 = vertices[e.v];
+        let p2 = vertices[e.w];
+        let original_p1 = figure.vertices[e.v];
+        let original_p2 = figure.vertices[e.w];
+        if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon) { return false; }
+    }
     return does_figure_fit_in_hole(&f, &hole);
 }
 
@@ -138,6 +145,8 @@ pub struct Ring {
     outer_radius: f64,
 }
 
+const EPS: f64 = 1e-8;
+
 impl Ring {
     #[allow(dead_code)]
     fn new(center: Point, inner_radius: f64, outer_radius: f64) -> Ring {
@@ -157,8 +166,8 @@ impl Ring {
         let sq_inner_radius =
             ((1.0 - epsilon as f64 / 1000000.0) * original_squared_distance).max(0.0);
         let sq_outer_radius = (1.0 + epsilon as f64 / 1000000.0) * original_squared_distance;
-        let inner_radius = sq_inner_radius.sqrt();
-        let outer_radius = sq_outer_radius.sqrt();
+        let inner_radius = sq_inner_radius.sqrt() - EPS;
+        let outer_radius = sq_outer_radius.sqrt() + EPS;
         Ring {
             center,
             inner_radius,
@@ -330,6 +339,17 @@ fn test_each_ring_points() {
     assert!(points7[2] == Point::new(0.0, 0.0));
     assert!(points7[3] == Point::new(1.0, 0.0));
     assert!(points7[4] == Point::new(0.0, 1.0));
+
+}
+
+#[test]
+fn test_ring_points() {
+    let p1 = Point::new(62.0, 43.0);
+    let p2 = Point::new(61.0, 52.0);
+    let original_squared_distance = 100.0;
+    let ring = Ring::from_epsilon(p2, 180000, original_squared_distance);
+
+    assert!(ring_points(&ring).contains(&p1));
 }
 
 pub fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
