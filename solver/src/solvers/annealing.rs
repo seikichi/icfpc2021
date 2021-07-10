@@ -54,6 +54,7 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
         if iter % 100 == 0 {
             let elapsed = Instant::now() - start_at;
             if best_score == 0.0 || elapsed >= time_limit {
+                eprintln!("iter = {}", iter);
                 return (best_solution, best_score);
             }
 
@@ -113,18 +114,25 @@ fn make_next_candidates(
     let mut points = ring_points(&ring);
     points.shuffle(rng);
     for &p in points.iter() {
-        let ok = out_edges[i].iter().all(|&dst| {
+        let ok1 = out_edges[i].iter().all(|&dst| {
             is_allowed_distance(
                     &p,
                     &solution[dst],
                     &original_vertices[i],
                     &original_vertices[dst],
                     epsilon,
-            ) && does_line_fit_in_hole(&p, &solution[dst], hole)
+            )
         });
-        if ok {
-            return p;
+        if !ok1 {
+            continue;
         }
+        let ok2 = out_edges[i].iter().all(|&dst| {
+            does_line_fit_in_hole(&p, &solution[dst], hole)
+        });
+        if !ok2 {
+            continue;
+        }
+        return p;
     }
     unreachable!()
 }
