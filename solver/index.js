@@ -25,13 +25,45 @@ function calculateDislikes(problem, solution) {
 
 exports.handler = async function (event, context) {
     const SOLVER_PATH = '/code/target/release/icfpc2021';
-    const id = "1"
-    const item = await client.get({ TableName, Key: { ProblemId: '1' } }).promise();
 
-    const problem = item.Item.Problem;
+    const result = await client.scan({
+        TableName,
+        ExpressionAttributeValues: {
+            ":t": Date.now() - (15 * 60 * 1000),
+        },
+        FilterExpression: "attribute_not_exists(LastExecutionTimestamp) OR LastExecutionTimestamp < :t"
+    }).promise();
+    const items = result.Items;
+    if (items.length === 0) {
+        console.log("Nothing to update...");
+        return {};
+    }
+    const target = items[0];
+    const id = target.ProblemId;
+    const problem = target.Problem;
+    console.log(`Try to update ${id}, current Dislikes = ${target.Dislikes}`);
+
+    // Update Last Execution Timestamp
+    const now = Date.now();
+    console.log(`Update LastExecutionTimestamp in ${id} to ${now}`);
+
+    await client.update({
+        TableName,
+        Key: {
+            ProblemId: id,
+        },
+        UpdateExpression: "set LastExecutionTimestamp = :t",
+        ExpressionAttributeValues: {
+            ":t": now,
+            ":p": target.LastExecutionTimestamp || 0,
+        },
+        ConditionExpression: "attribute_not_exists(LastExecutionTimestamp) OR LastExecutionTimestamp = :p",
+    }).promise();
+
+    // Calc
     const solution = JSON.parse(child_process.execSync(SOLVER_PATH, { input: JSON.stringify(problem) }));
-
     const dislikes = calculateDislikes(problem, solution);
+    console.log(`Dislikes = ${dislikes}, solution = ${JSON.stringify(solution)}`);
 
     try {
         await client.update({
