@@ -217,7 +217,7 @@ fn test_is_allowed_distance() {
     assert!(is_allowed_distance(&p1, &p2, &original_p1, &original_p2, 0));
 }
 
-fn pow2(x: f64) -> f64 {
+pub fn pow2(x: f64) -> f64 {
     x * x
 }
 

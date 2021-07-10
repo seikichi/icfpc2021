@@ -7,10 +7,35 @@ static SEED: [u8; 32] = [
     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
 ];
 
+fn ascore(solution: &Vec<Point>, input: &Input) -> f64 {
+    let dislike = calculate_dislike(&solution, &input.hole);
+
+    let mut gx: f64 = 0.0;
+    let mut gy: f64 = 0.0;
+    for p in solution.iter() {
+        gx += p.x();
+        gy += p.y();
+    }
+    gx /= solution.len() as f64;
+    gy /= solution.len() as f64;
+
+    let mut vx: f64 = 0.0;
+    let mut vy: f64 = 0.0;
+    for p in solution.iter() {
+        vx += pow2(p.x() - gx);
+        vy += pow2(p.y() - gy);
+    }
+    vx /= solution.len() as f64;
+    vy /= solution.len() as f64;
+
+    dislike / (input.hole.exterior().num_coords() as f64) + (vx + vy) * 1.0
+}
+
+
 pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (Vec<Point>, f64) {
     let n = solution.len();
     let mut rng = SmallRng::from_seed(SEED);
-    let mut current_score = calculate_dislike(&solution, &input.hole);
+    let mut current_score = ascore(&solution, &input);
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;
     let start_at = Instant::now();
@@ -44,7 +69,7 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
         // calculate score. FIXME: slow
         let old = solution[i];
         solution[i] = candidate;
-        let new_score = calculate_dislike(&solution, &input.hole);
+        let new_score = ascore(&solution, &input);
 
         let accept = {
             if new_score < current_score {
