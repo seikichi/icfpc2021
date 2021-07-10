@@ -1,4 +1,5 @@
 use crate::common::*;
+use geo::algorithm::coords_iter::CoordsIter;
 use std::time::{Duration, Instant};
 use rand::prelude::*;
 use rand::seq::SliceRandom;
@@ -29,7 +30,7 @@ fn ascore(solution: &Vec<Point>, input: &Input) -> f64 {
     vx /= solution.len() as f64;
     vy /= solution.len() as f64;
 
-    dislike / (input.hole.exterior().num_coords() as f64) + (vx + vy) * 1.0
+    dislike / (input.hole.exterior().coords_count() as f64) + (vx + vy) * 1.0
 }
 
 
@@ -55,7 +56,8 @@ pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (
             let elapsed = Instant::now() - start_at;
             if best_score == 0.0 || elapsed >= time_limit {
                 eprintln!("iter = {}", iter);
-                return (best_solution, best_score);
+                let dislike = calculate_dislike(&best_solution, &input.hole);
+                return (best_solution, dislike);
             }
 
             // tweak temperature
