@@ -6,13 +6,8 @@ use inout::*;
 use std::time::Duration;
 
 fn main() {
-    let disable_dfs_centroid = {
-        if let Ok(_s) = std::env::var("DISABLE_DFS_CENTROID") {
-            true
-        } else {
-            false
-        }
-    };
+    let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
+    let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
     let hill_climbing_time_limit = {
         if let Ok(s) = std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS") {
             let f: f64 = s.parse().expect("Invalid HILL_CLIMBING_TIME_LIMIT_SECONDS");
@@ -33,9 +28,14 @@ fn main() {
         let (solution2, dislike2) = solvers::orthgonal::solve(&input2).unwrap();
         eprintln!("orthgonal: dislike = {}", dislike2);
 
-        // hill climbing
-        let (solution3, dislike3) = solvers::hill_climbing::solve(&input, solution2, hill_climbing_time_limit);
-        eprintln!("hill_climbing: dislike = {}", dislike3);
+        let (solution3, dislike3) = if use_hill_climbing {
+            eprintln!("hill climbing...");
+            solvers::hill_climbing::solve(&input, solution2, hill_climbing_time_limit)
+        } else {
+            eprintln!("annealing...");
+            solvers::annealing::solve(&input, solution2, hill_climbing_time_limit)
+        };
+        eprintln!("hill_climbing/annealing: dislike = {}", dislike3);
 
         // orthgonal2
         let mut input3 = input.clone();
