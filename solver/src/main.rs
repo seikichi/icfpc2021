@@ -6,6 +6,16 @@ use inout::*;
 use std::time::Duration;
 
 fn main() {
+    let hill_climbing_time_limit = {
+        if let Ok(s) = std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS") {
+            let f: f64 = s.parse().expect("Invalid HILL_CLIMBING_TIME_LIMIT_SECONDS");
+            Duration::from_secs_f64(f)
+        } else {
+            Duration::from_millis(2000)
+        }
+    };
+    eprintln!("hill_climbing_time_limit = {:?}", hill_climbing_time_limit);
+
     let input = read_input();
     if let Some((solution1, dislike1)) = solvers::dfs::solve(&input) {
         eprintln!("dfs: dislike = {}", dislike1);
@@ -17,7 +27,7 @@ fn main() {
         eprintln!("orthgonal: dislike = {}", dislike2);
 
         // hill climbing
-        let (solution3, dislike3) = solvers::hill_climbing::solve(&input, solution2, Duration::from_millis(10000));
+        let (solution3, dislike3) = solvers::hill_climbing::solve(&input, solution2, hill_climbing_time_limit);
         eprintln!("hill_climbing: dislike = {}", dislike3);
 
         // orthgonal2
