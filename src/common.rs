@@ -69,6 +69,14 @@ pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     true
 }
 
+pub fn does_pose_fit_in_hole(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon) -> bool {
+    let f = Figure {
+        edges: figure.edges.clone(),
+        vertices: vertices.clone(),
+    };
+    return does_figure_fit_in_hole(&f, &hole);
+}
+
 // #[test]
 // fn test_contains() {
 //     let l1 = Line::new(Point::new(0.0, 10.0), Point::new(20.0, 10.0));
