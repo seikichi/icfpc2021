@@ -111,7 +111,7 @@ impl Solver {
         visited[src] = true;
 
         let mut holl_points = self.holl_points.clone();
-        holl_points.shuffle(&mut self.rng);
+        //holl_points.shuffle(&mut self.rng);
         for &p in holl_points.iter() {
             vertices[src] = p;
 
