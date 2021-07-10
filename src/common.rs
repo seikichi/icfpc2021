@@ -115,11 +115,12 @@ fn test_calculate_dislike() {
 }
 
 #[derive(Debug, Clone)]
-struct Ring {
+pub struct Ring {
     center: Point,
     inner_radius: f64,
     outer_radius: f64,
 }
+
 impl Ring {
     fn new(center: Point, inner_radius: f64, outer_radius: f64) -> Ring {
         assert!(inner_radius <= outer_radius);
@@ -135,7 +136,20 @@ fn pow2(x: f64) -> f64 {
     x * x
 }
 
-fn each_ring_points(ring: Ring, mut f: impl FnMut(Point)) {
+impl Ring {
+    pub fn from_epsilon(center: Point, epsilon: i64, original_squared_distance: f64) -> Ring {
+        // |d'/d - 1| <= eps/1,000,000
+        // -eps/1,000,000 <= d'/d - 1 <= eps/1,000,000
+        // (1 - eps/1,000,000)*d <= d' <= (1 + eps/1,000,000)*d
+        let sq_inner_radius = ((1.0 - epsilon as f64 / 1000000.0) * original_squared_distance).max(0.0);
+        let sq_outer_radius = (1.0 + epsilon as f64 / 1000000.0) * original_squared_distance;
+        let inner_radius = sq_inner_radius.sqrt();
+        let outer_radius = sq_outer_radius.sqrt();
+        Ring { center, inner_radius, outer_radius }
+    }
+}
+
+pub fn each_ring_points(ring: &Ring, mut f: impl FnMut(Point)) {
     let y_min = (ring.center.y() - ring.outer_radius).ceil() as i64;
     let y_max = (ring.center.y() + ring.outer_radius).floor() as i64;
     let iy_min = (ring.center.y() - ring.inner_radius).floor() as i64;
@@ -171,7 +185,7 @@ fn test_each_ring_points() {
         points1.push(p);
     };
     let ring1 = Ring::new(Point::new(0.0, 0.0), 1.0, 1.0);
-    each_ring_points(ring1, f1);
+    each_ring_points(&ring1, f1);
     // println!("{:?}", points1);
     assert!(points1.len() == 4);
     assert!(points1[0] == Point::new(0.0, -1.0));
@@ -184,7 +198,7 @@ fn test_each_ring_points() {
         points2.push(p);
     };
     let ring2 = Ring::new(Point::new(0.0, 0.0), 2.0, 2.0);
-    each_ring_points(ring2, f2);
+    each_ring_points(&ring2, f2);
     // println!("{:?}", points2);
     assert!(points2.len() == 4);
     assert!(points2[0] == Point::new(0.0, -2.0));
@@ -197,7 +211,7 @@ fn test_each_ring_points() {
         points3.push(p);
     };
     let ring3 = Ring::new(Point::new(0.0, 0.0), 1.0, 2.0);
-    each_ring_points(ring3, f3);
+    each_ring_points(&ring3, f3);
     // println!("{:?}", points3);
     assert!(points3.len() == 12);
     assert!(points3[0] == Point::new(0.0, -2.0));
@@ -218,7 +232,7 @@ fn test_each_ring_points() {
         points4.push(p);
     };
     let ring4 = Ring::new(Point::new(1.0, 1.0), 1.0, 1.0);
-    each_ring_points(ring4, f4);
+    each_ring_points(&ring4, f4);
     // println!("{:?}", points4);
     assert!(points4.len() == 4);
     assert!(points4[0] == Point::new(1.0, 0.0));
@@ -231,7 +245,7 @@ fn test_each_ring_points() {
         points5.push(p);
     };
     let ring5 = Ring::new(Point::new(0.0, 0.0), 1.1, 1.3);
-    each_ring_points(ring5, f5);
+    each_ring_points(&ring5, f5);
     // println!("{:?}", points5);
     assert!(points5.len() == 0);
 
@@ -240,7 +254,7 @@ fn test_each_ring_points() {
         points6.push(p);
     };
     let ring6 = Ring::new(Point::new(0.0, 0.0), 0.0, 0.0);
-    each_ring_points(ring6, f6);
+    each_ring_points(&ring6, f6);
     // println!("{:?}", points6);
     assert!(points6.len() == 1);
     assert!(points6[0] == Point::new(0.0, 0.0));
@@ -250,7 +264,7 @@ fn test_each_ring_points() {
         points7.push(p);
     };
     let ring7 = Ring::new(Point::new(0.0, 0.0), 0.0, 1.0);
-    each_ring_points(ring7, f7);
+    each_ring_points(&ring7, f7);
     // println!("{:?}", points6);
     assert!(points7.len() == 5);
     assert!(points7[0] == Point::new(0.0, -1.0));
