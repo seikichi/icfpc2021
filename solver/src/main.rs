@@ -59,7 +59,7 @@ fn main() {
         eprintln!("adjust: dislike = {}", dislike5);
 
         // output
-        let j = vertices_to_pose_json(&solution5);
+        let j = vertices_to_pose_json(&solution5, &vec![], &vec![]);
         println!("{}", j);
         if !common::does_valid_pose(&solution5, &input.figure, &input.hole, input.epsilon) {
             eprintln!("Pose is invalid");

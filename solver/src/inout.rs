@@ -5,9 +5,17 @@ use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InputJSON {
+    pub bonuses: Vec<BonusInJSON>,
     pub hole: Vec<Vec<i64>>,
     pub figure: FigureJSON,
     pub epsilon: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BonusInJSON {
+    pub position: Vec<i64>,
+    pub bonus: String,
+    pub problem: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -19,6 +27,13 @@ pub struct FigureJSON {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PoseJSON {
     pub vertices: Vec<Vec<i64>>,
+    pub bonuses: Vec<BonusOutJSON>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BonusOutJSON {
+    pub bonus: String,
+    pub problem: i64,
 }
 
 pub fn parse_input(data: &str) -> Input {
@@ -41,11 +56,19 @@ pub fn parse_input(data: &str) -> Input {
         .iter()
         .map(|p| Point::new(p[0] as f64, p[1] as f64))
         .collect();
+    let bonuses : Vec<Bonus> = input_json.bonuses.iter().map(|b|
+    Bonus {
+        position: Point::new(b.position[0] as f64, b.position[1] as f64),
+            bonus: b.bonus.clone(),
+            problem: b.problem,
+        })
+        .collect();
 
     Input {
         hole: Polygon::new(geo::LineString::from(hole), vec![]),
         figure: Figure { edges, vertices },
         epsilon: input_json.epsilon,
+        bonuses: bonuses,
     }
 }
 
@@ -67,21 +90,26 @@ pub fn read_input() -> Input {
 }
 
 #[allow(dead_code)]
-pub fn figure_to_pose_json(figure: &Figure) -> String {
-    let vertices: Vec<Vec<i64>> = figure
-        .vertices
-        .iter()
-        .map(|p| vec![p.x() as i64, p.y() as i64])
-        .collect();
-    let pose_json = PoseJSON { vertices };
-    serde_json::to_string(&pose_json).unwrap()
+pub fn figure_to_pose_json(figure: &Figure, bonus_strs: &Vec<String>, bonus_problems: &Vec<i64>) -> String {
+    vertices_to_pose_json(&figure.vertices, bonus_strs, bonus_problems)
 }
 
-pub fn vertices_to_pose_json(vertices: &[Point]) -> String {
+pub fn vertices_to_pose_json(vertices: &[Point], bonus_strs: &Vec<String>, bonus_problems: &Vec<i64>) -> String {
     let vs: Vec<Vec<i64>> = vertices
         .iter()
         .map(|p| vec![p.x() as i64, p.y() as i64])
         .collect();
-    let pose_json = PoseJSON { vertices: vs };
+    assert!(bonus_strs.len() == bonus_problems.len());
+    let mut bonuses = vec![];
+    for i in 0..bonus_strs.len() {
+        bonuses.push(BonusOutJSON {
+            bonus: bonus_strs[i].clone(),
+            problem: bonus_problems[i],
+        });
+    }
+    let pose_json = PoseJSON {
+        vertices: vs,
+        bonuses: bonuses,
+    };
     serde_json::to_string(&pose_json).unwrap()
 }

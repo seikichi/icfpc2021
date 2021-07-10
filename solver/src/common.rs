@@ -22,10 +22,18 @@ pub struct Figure {
 }
 
 #[derive(Debug, Clone)]
+pub struct Bonus {
+    pub position: Point,
+    pub bonus: String,
+    pub problem: i64,
+}
+
+#[derive(Debug, Clone)]
 pub struct Input {
     pub hole: Polygon,
     pub figure: Figure,
     pub epsilon: i64,
+    pub bonuses: Vec<Bonus>,
 }
 
 pub fn squared_distance(a: &Point, b: &Point) -> f64 {
