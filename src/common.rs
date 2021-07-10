@@ -34,11 +34,10 @@ pub fn squared_distance(a: &Point, b: &Point) -> f64 {
     dx * dx + dy * dy
 }
 
-pub fn calculate_dislike(figure: &Figure, hole: &Polygon) -> f64 {
+pub fn calculate_dislike(vertices: &[Point], hole: &Polygon) -> f64 {
     let mut s = 0.0;
     for h in hole.exterior().points_iter().skip(1) {
-        s += figure
-            .vertices
+        s += vertices
             .iter()
             .map(|v| squared_distance(v, &h))
             .fold(0.0 / 0.0, |m, x| x.min(m));
@@ -109,9 +108,9 @@ fn test_calculate_dislike() {
         ]),
         vec![],
     );
-    assert!(calculate_dislike(&figure1, &hole1) == 20.0);
-    assert!(calculate_dislike(&figure2, &hole1) == 0.0);
-    assert!(calculate_dislike(&figure3, &hole1) == 18.0);
+    assert!(calculate_dislike(&figure1.vertices, &hole1) == 20.0);
+    assert!(calculate_dislike(&figure2.vertices, &hole1) == 0.0);
+    assert!(calculate_dislike(&figure3.vertices, &hole1) == 18.0);
 }
 
 #[derive(Debug, Clone)]

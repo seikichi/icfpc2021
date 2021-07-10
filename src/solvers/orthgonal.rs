@@ -31,7 +31,7 @@ fn try_all_translations(original_figure: &Figure, hole: &Polygon) -> Option<(Fig
         for dx in -100..=100 {
             translate(original_figure, dx as f64, dy as f64, &mut figure);
             if does_figure_fit_in_hole(&figure, hole) {
-                let dislike = calculate_dislike(&figure, hole);
+                let dislike = calculate_dislike(&figure.vertices, hole);
                 if dislike < best_dislike {
                     best_figure = Some(figure.clone());
                     best_dislike = dislike;

@@ -18,10 +18,12 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
         hole: input.hole.clone(),
     };
     let mut vertices = input.figure.vertices.clone();
-    //let mut visited = vec![false; input.figure.vertices.len()];
+    let mut visited = vec![false; input.figure.vertices.len()];
+    let order = solver.reorder(vertices.len());
 
-    if solver.naive_dfs(0, &mut vertices) {
-        Some((vertices, 0.0))
+    if solver.naive_dfs(0, &mut vertices, &mut visited, &order) {
+        let dislike = calculate_dislike(&vertices, &input.hole);
+        Some((vertices, dislike))
     } else {
         None
     }
@@ -59,40 +61,78 @@ impl Solver {
     }
     */
 
-    fn naive_dfs(&self, i: usize, vertices: &mut [Point]) -> bool {
+    fn reorder(&self, n: usize) -> Vec<usize> {
+        let mut order = vec![0; n];
+        let mut determined = vec![false; n];
+        for i in 0..n {
+            let mut best = (0, 0, 0);
+            for j in 0..n {
+                if determined[j] {
+                    continue;
+                }
+                let mut jisu = 0;
+                for &k in self.out_edges[j].iter() {
+                    if determined[k] {
+                        jisu += 1;
+                    }
+                }
+                let score = (jisu, self.out_edges[j].len(), j);
+                if best < score {
+                    best = score;
+                }
+            }
+            order[i] = best.2;
+            determined[order[i]] = true;
+        }
+        order
+    }
+
+    fn naive_dfs(
+        &self,
+        i: usize,
+        vertices: &mut [Point],
+        visited: &mut [bool],
+        order: &[usize],
+    ) -> bool {
         if i == self.original_vertices.len() {
             return true;
         }
+        let src = order[i];
+        visited[src] = true;
 
-        each_point_in_hole(&self.hole, |p| {
-            vertices[i] = p;
+        let ret = each_point_in_hole(&self.hole, |p| {
+            vertices[src] = p;
 
             // verify
             let mut ok = true;
-            for &w in self.out_edges[i].iter() {
-                if w < i {
-                    // check
-                    if !is_allowed_distance(
-                        &vertices[i],
-                        &vertices[w],
-                        &self.original_vertices[i],
-                        &self.original_vertices[w],
-                        self.epsilon,
-                    ) {
-                        ok = false;
-                        break;
-                    }
+            for &dst in self.out_edges[src].iter() {
+                if !visited[dst] {
+                    continue;
+                }
+                // check
+                if !is_allowed_distance(
+                    &vertices[src],
+                    &vertices[dst],
+                    &self.original_vertices[src],
+                    &self.original_vertices[dst],
+                    self.epsilon,
+                ) {
+                    ok = false;
+                    break;
                 }
             }
 
             if ok {
-                if self.naive_dfs(i + 1, vertices) {
+                if self.naive_dfs(i + 1, vertices, visited, order) {
                     return true;
                 }
             }
 
             false
-        })
+        });
+
+        visited[src] = false;
+        ret
     }
 }
 
