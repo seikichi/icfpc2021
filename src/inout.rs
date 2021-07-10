@@ -60,3 +60,12 @@ pub fn figure_to_pose_json(figure: &Figure) -> String {
     let pose_json = PoseJSON { vertices };
     serde_json::to_string(&pose_json).unwrap()
 }
+
+pub fn vertices_to_pose_json(vertices: &[Point]) -> String {
+    let vs: Vec<Vec<i64>> = vertices
+        .iter()
+        .map(|p| vec![p.x() as i64, p.y() as i64])
+        .collect();
+    let pose_json = PoseJSON { vertices: vs };
+    serde_json::to_string(&pose_json).unwrap()
+}

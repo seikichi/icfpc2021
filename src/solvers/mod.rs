@@ -1,2 +1,2 @@
-pub mod orthgonal;
 pub mod dfs;
+pub mod orthgonal;

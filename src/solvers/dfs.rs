@@ -3,28 +3,28 @@ use geo::algorithm::contains::Contains;
 
 struct Solver {
     original_vertices: Vec<Point>, // readonly
-    edges: Vec<Edge>, // readonly
-    out_edges: Vec<Vec<usize>>, // readonly
-    epsilon: i64, // readonly
-    vertices: Vec<Point>, // mutable
-    visited: Vec<bool>, // mutable
+    edges: Vec<Edge>,              // readonly
+    out_edges: Vec<Vec<usize>>,    // readonly
+    epsilon: i64,                  // readonly
+    hole: Polygon,                 // readonly
 }
 
-pub fn solve(input: &Input) {   
-    let mut solver = Solver {
+pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
+    let solver = Solver {
         original_vertices: input.figure.vertices.clone(),
         edges: input.figure.edges.clone(),
         out_edges: make_out_edges(&input.figure.edges, input.figure.vertices.len()),
         epsilon: input.epsilon,
-        vertices: input.figure.vertices.clone(),
-        visited: vec![false; input.figure.vertices.len()],
+        hole: input.hole.clone(),
     };
+    let mut vertices = input.figure.vertices.clone();
+    //let mut visited = vec![false; input.figure.vertices.len()];
 
-    each_point_in_hole(&input.hole, |v| {
-        solver.vertices[0] = v;
-        solver.visited[0] = true;
-        solver.dfs(0);
-    });
+    if solver.naive_dfs(0, &mut vertices) {
+        Some((vertices, 0.0))
+    } else {
+        None
+    }
 }
 
 fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
@@ -37,27 +37,66 @@ fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
 }
 
 impl Solver {
-    fn dfs(&mut self, i: usize) {
+    /*
+    fn dfs(&self, i: usize, vertices: &mut [Point], visited: &mut [bool]) {
         for &j in self.out_edges[i].iter() {
-            if self.visited[j] {
+            if visited[j] {
                 continue;
             }
-            let v = self.vertices[i];
+            let v = vertices[i];
             let ov = self.original_vertices[i];
             let ow = self.original_vertices[j];
             let original_squared_distance = squared_distance(&ov, &ow);
             let ring = Ring::from_epsilon(v, self.epsilon, original_squared_distance);
-            //each_ring_points(&ring, |p| {
-            //    self.vertices[j] = p;
-            //    self.visited[j] = true;
-            //    self.dfs(j);
-            //});
-            self.visited[j] = false;
+            for p in ring_points(&ring).iter() {
+                // TODO: check p is valid
+                vertices[j] = *p;
+                visited[j] = true;
+                self.dfs(j, vertices, visited);
+            }
+            visited[j] = false;
         }
+    }
+    */
+
+    fn naive_dfs(&self, i: usize, vertices: &mut [Point]) -> bool {
+        if i == self.original_vertices.len() {
+            return true;
+        }
+
+        each_point_in_hole(&self.hole, |p| {
+            vertices[i] = p;
+
+            // verify
+            let mut ok = true;
+            for &w in self.out_edges[i].iter() {
+                if w < i {
+                    // check
+                    if !is_allowed_distance(
+                        &vertices[i],
+                        &vertices[w],
+                        &self.original_vertices[i],
+                        &self.original_vertices[w],
+                        self.epsilon,
+                    ) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+
+            if ok {
+                if self.naive_dfs(i + 1, vertices) {
+                    return true;
+                }
+            }
+
+            false
+        })
     }
 }
 
-fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
+fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point) -> bool) -> bool {
     let mut min_x: f64 = 1e20;
     let mut max_x: f64 = -1e20;
     let mut min_y: f64 = 1e20;
@@ -72,8 +111,11 @@ fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
         for x in (min_x.ceil() as i64)..=(max_x as i64) {
             let p = Point::new(x as f64, y as f64);
             if hole.contains(&p) || hole.exterior().contains(&p) {
-                f(p);
+                if f(p) {
+                    return true;
+                }
             }
         }
     }
+    false
 }

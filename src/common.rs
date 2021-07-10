@@ -130,23 +130,55 @@ impl Ring {
             outer_radius,
         }
     }
-}
 
-fn pow2(x: f64) -> f64 {
-    x * x
-}
-
-impl Ring {
     pub fn from_epsilon(center: Point, epsilon: i64, original_squared_distance: f64) -> Ring {
         // |d'/d - 1| <= eps/1,000,000
         // -eps/1,000,000 <= d'/d - 1 <= eps/1,000,000
         // (1 - eps/1,000,000)*d <= d' <= (1 + eps/1,000,000)*d
-        let sq_inner_radius = ((1.0 - epsilon as f64 / 1000000.0) * original_squared_distance).max(0.0);
+        let sq_inner_radius =
+            ((1.0 - epsilon as f64 / 1000000.0) * original_squared_distance).max(0.0);
         let sq_outer_radius = (1.0 + epsilon as f64 / 1000000.0) * original_squared_distance;
         let inner_radius = sq_inner_radius.sqrt();
         let outer_radius = sq_outer_radius.sqrt();
-        Ring { center, inner_radius, outer_radius }
+        Ring {
+            center,
+            inner_radius,
+            outer_radius,
+        }
     }
+}
+
+pub fn is_allowed_distance(
+    p1: &Point,
+    p2: &Point,
+    original_p1: &Point,
+    original_p2: &Point,
+    epsilon: i64,
+) -> bool {
+    let sd = squared_distance(p1, p2);
+    let original_sd = squared_distance(original_p1, original_p2);
+    // |sd / original_sd - 1.0| <= epsilon / 1000000
+    // -epsilon / 1,000,000 <= sd / original_sd - 1.0 <= epsilon / 1,000,000
+    // 1.0 - eps / 1,000,000 <= sd / original_sd <= 1.0 + eps / 1,000,000
+    // (1.0 - eps / 1,000,000) * original_sd <= sd <= (1.0 + eps / 1,000,000) * original_sd
+    // (1,000,000 - eps) * original_sd <= sd * 1,000,000 <= (1,000,000 + eps) * original_sd
+    let lo = (1000000.0 - epsilon as f64) * original_sd;
+    let middle = sd * 1000000.0;
+    let hi = (1000000.0 + epsilon as f64) * original_sd;
+    lo <= middle && middle <= hi
+}
+
+#[test]
+fn test_is_allowed_distance() {
+    let p1 = Point::new(10.0, 0.0);
+    let p2 = Point::new(10.0, 10.0);
+    let original_p1 = Point::new(0.0, 0.0);
+    let original_p2 = Point::new(10.0, 0.0);
+    assert!(is_allowed_distance(&p1, &p2, &original_p1, &original_p2, 0));
+}
+
+fn pow2(x: f64) -> f64 {
+    x * x
 }
 
 pub fn each_ring_points(ring: &Ring, mut f: impl FnMut(Point)) {
@@ -176,6 +208,12 @@ pub fn each_ring_points(ring: &Ring, mut f: impl FnMut(Point)) {
             }
         }
     }
+}
+
+pub fn ring_points(ring: &Ring) -> Vec<Point> {
+    let mut ps = vec![];
+    each_ring_points(ring, |p| ps.push(p));
+    ps
 }
 
 #[test]
