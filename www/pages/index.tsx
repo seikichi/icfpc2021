@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from "path";
+import { useRef, createRef, useEffect, RefObject } from "react";
 import Link from 'next/link'
 import { Button, ButtonGroup } from '@material-ui/core'
 
@@ -75,8 +76,72 @@ export async function getStaticProps() {
   }
 }
 
-export default function Home({ ids, rows }: Props) {
+export default function Home({ rows }: Props) {
   const classes = useStyles();
+  const canvasRefs = useRef([] as RefObject<HTMLCanvasElement>[]);
+
+  if (canvasRefs.current.length !== rows.length) {
+    canvasRefs.current = Array(rows.length).fill(null).map((_, i) => canvasRefs.current[i] || createRef());
+  }
+
+  useEffect(() => {
+    for (let i = 0; i < rows.length; i++) {
+      const canvas = canvasRefs.current[i].current;
+      if (!canvas) {
+        continue;
+      }
+
+      const problem = rows[i].problem;
+      const solution = rows[i].solution;
+      const ctx = canvas.getContext('2d')!;
+
+      let size = -1
+      for (let [x, y] of [...problem.hole, ...problem.figure.vertices]) {
+        size = Math.max(size, x, y)
+      }
+      size += 10
+      const scale = canvas.width / (size * 1.0)
+
+      ctx.resetTransform()
+      ctx.scale(scale, scale)
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#00000066"
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // hole
+      ctx.beginPath()
+      ctx.moveTo(problem.hole[0][0], problem.hole[0][1])
+      for (let i = 1; i < problem.hole.length; i++) {
+        ctx.lineTo(problem.hole[i][0], problem.hole[i][1])
+      }
+      ctx.fillStyle = "#e1ddd1"
+      ctx.fill()
+
+      // vertices (problem)
+      ctx.beginPath()
+      let vertices = problem.figure.vertices
+      for (let i = 0; i < problem.figure.edges.length; i++) {
+        const [edgeFrom, edgeTo] = problem.figure.edges[i]
+        ctx.moveTo(vertices[edgeFrom][0], vertices[edgeFrom][1])
+        ctx.lineTo(vertices[edgeTo][0], vertices[edgeTo][1])
+      }
+      ctx.strokeStyle = "#0000ff50"
+      ctx.stroke()
+
+      if (solution) {
+        ctx.beginPath()
+        vertices = solution.vertices
+        for (let i = 0; i < problem.figure.edges.length; i++) {
+          const [edgeFrom, edgeTo] = problem.figure.edges[i]
+          ctx.moveTo(vertices[edgeFrom][0], vertices[edgeFrom][1])
+          ctx.lineTo(vertices[edgeTo][0], vertices[edgeTo][1])
+        }
+        ctx.strokeStyle = "#ff0000"
+        ctx.stroke()
+      }
+    }
+  }, [rows, canvasRefs]);
 
   return (
     <>
@@ -92,7 +157,7 @@ export default function Home({ ids, rows }: Props) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {rows.map((row, i) => (
               <TableRow key={row.id}>
                 <TableCell component="th" scope="row">
                   {row.id}
@@ -101,8 +166,7 @@ export default function Home({ ids, rows }: Props) {
                 <TableCell align="right">{row.minimalDislike}</TableCell>
                 <TableCell align="right">{row.score}</TableCell>
                 <TableCell>
-                  {/* <canvas width={200} height={200}></canvas> */}
-                  {JSON.stringify(row.problem)}
+                  <canvas ref={canvasRefs.current[i]} width={200} height={200}></canvas>
                 </TableCell>
               </TableRow>
             ))}
