@@ -118,13 +118,13 @@ impl Solver {
             // verify
             let ok = self.out_edges[src].iter().all(|&dst| {
                 !visited[dst]
-                    || is_allowed_distance(
+                    || (is_allowed_distance(
                         &vertices[src],
                         &vertices[dst],
                         &self.original_vertices[src],
                         &self.original_vertices[dst],
                         self.epsilon,
-                    )
+                    ) && does_line_fit_in_hole(&vertices[src], &vertices[dst], &self.hole))
             });
 
             if ok {

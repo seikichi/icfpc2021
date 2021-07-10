@@ -45,6 +45,16 @@ pub fn calculate_dislike(vertices: &[Point], hole: &Polygon) -> f64 {
     s
 }
 
+pub fn does_line_fit_in_hole(p1: &Point, p2: &Point, hole: &Polygon) -> bool {
+    let line = Line::new(*p1, *p2);
+    if !hole.contains(&line) {
+        if !hole.exterior().contains(&line) {
+            return false;
+        }
+    }
+    true
+}
+
 pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     for e in figure.edges.iter() {
         let p1 = figure.vertices[e.v];
