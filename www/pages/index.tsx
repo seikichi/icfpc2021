@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs'
+import fs from 'fs'
 import path from "path";
 import Link from 'next/link'
 import { Button, ButtonGroup } from '@material-ui/core'
@@ -12,6 +12,21 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 
+type Point = [number, number];
+
+interface Problem {
+  hole: Point[]
+  figure: {
+    vertices: Point[];
+    edges: [number, number][];
+  };
+  epsilon: number;
+}
+
+interface Solution {
+  vertices: Point[];
+}
+
 const useStyles = makeStyles({
   table: {
     minWidth: 650,
@@ -19,32 +34,48 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  ids: readonly string[];
+  rows: readonly TableRowData[];
+}
+
+interface TableRowData {
+  id: number;
+  dislike: number;
+  minimalDislike: number;
+  score: number;
+  problem: Problem;
+  solution: Solution | null;
 }
 
 export async function getStaticProps() {
-  const dir = path.join(process.cwd(), '..', 'solutions');
-  const files = await fs.readdir(dir);
-  const ids = files.map(f => path.basename(f, '.solution'));
+  const dir = path.join(process.cwd(), '..', 'problems');
+  const files = fs.readdirSync(dir);
+  const ids: number[] = files.map(f => parseInt(path.basename(f, '.problem'), 10));
+
+  const rows = ids.sort().map((id): TableRowData => {
+    const problemPath = path.join(process.cwd(), '..', 'problems', `${id}.problem`)
+    const problem = JSON.parse(fs.readFileSync(problemPath, 'utf-8')) as Problem;
+
+    const solutionPath = path.join(process.cwd(), '..', 'solutions', `${id}.solution`)
+    const solution = fs.existsSync(solutionPath) ?
+      JSON.parse(fs.readFileSync(solutionPath, 'utf-8')) as Solution
+      : null;
+
+    return {
+      id,
+      dislike: 0,
+      minimalDislike: 0,
+      score: 0,
+      problem,
+      solution,
+    };
+  })
 
   return {
-    props: { ids }
+    props: { rows }
   }
 }
 
-function createData(name, calories, fat, carbs, protein) {
-  return { name, calories, fat, carbs, protein };
-}
-
-const rows = [
-  createData('Frozen yoghurt', 159, 6.0, 24, 4.0),
-  createData('Ice cream sandwich', 237, 9.0, 37, 4.3),
-  createData('Eclair', 262, 16.0, 24, 6.0),
-  createData('Cupcake', 305, 3.7, 67, 4.3),
-  createData('Gingerbread', 356, 16.0, 49, 3.9),
-];
-
-export default function Home({ ids }: Props) {
+export default function Home({ ids, rows }: Props) {
   const classes = useStyles();
 
   return (
@@ -62,41 +93,22 @@ export default function Home({ ids }: Props) {
           </TableHead>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.name}>
+              <TableRow key={row.id}>
                 <TableCell component="th" scope="row">
-                  {row.name}
+                  {row.id}
                 </TableCell>
-                <TableCell align="right">{row.calories}</TableCell>
-                <TableCell align="right">{row.fat}</TableCell>
-                <TableCell align="right">{row.carbs}</TableCell>
+                <TableCell align="right">{row.dislike}</TableCell>
+                <TableCell align="right">{row.minimalDislike}</TableCell>
+                <TableCell align="right">{row.score}</TableCell>
                 <TableCell>
-                  <canvas width={200} height={200}></canvas>
+                  {/* <canvas width={200} height={200}></canvas> */}
+                  {JSON.stringify(row.problem)}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-      <div style={{ margin: '0.5em' }}>
-        <Button variant="contained">Default</Button>{' '}
-        <Button variant="contained" color="primary">Primary</Button>{' '}
-        <Button variant="contained" color="secondary">Secondary</Button>{' '}
-        <Button variant="contained" disabled>Disabled</Button>{' '}
-        <Button variant="contained" color="primary" href="https://google.com/">LINK</Button>
-      </div>
-      <div style={{ margin: '0.5em' }}>
-        <ButtonGroup variant="contained" color="primary" aria-label="contained primary button group">
-          <Button>One</Button>
-          <Button>Two</Button>
-          <Button>Three</Button>
-        </ButtonGroup>
-      </div>
-      <h3>Solutions</h3>
-      <ul>
-        {
-          ids.map(id => <li key={id}><Link href={`/problems/${id}`}><a>{id}</a></Link></li>)
-        }
-      </ul>
     </>
   )
 }
