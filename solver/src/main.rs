@@ -43,10 +43,14 @@ fn main() {
         let (solution4, dislike4) = solvers::orthgonal::solve(&input3).unwrap();
         eprintln!("orthgonal: dislike = {}", dislike4);
 
+        // adjust
+        let (solution5, dislike5) = solvers::adjust::solve(&input, solution4);
+        eprintln!("adjust: dislike = {}", dislike5);
+
         // output
-        let j = vertices_to_pose_json(&solution4);
+        let j = vertices_to_pose_json(&solution5);
         println!("{}", j);
-        if !common::does_valid_pose(&solution4, &input.figure, &input.hole, input.epsilon) {
+        if !common::does_valid_pose(&solution5, &input.figure, &input.hole, input.epsilon) {
             eprintln!("Pose is invalid");
             std::process::exit(1);
         }
