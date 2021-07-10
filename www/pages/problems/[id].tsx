@@ -70,9 +70,19 @@ export default function Problem({ id, problem, solution }: Props) {
         ctx.fillStyle = "#e1ddd1"
         ctx.fill()
 
-        // vertices
+        // vertices (problem)
         ctx.beginPath()
-        const vertices = solution.vertices
+        let vertices = problem.figure.vertices
+        for (let i = 0; i < problem.figure.edges.length; i++) {
+            const [edgeFrom, edgeTo] = problem.figure.edges[i]
+            ctx.moveTo(vertices[edgeFrom][0], vertices[edgeFrom][1])
+            ctx.lineTo(vertices[edgeTo][0], vertices[edgeTo][1])
+        }
+        ctx.strokeStyle = "#0000ff50"
+        ctx.stroke()
+
+        ctx.beginPath()
+        vertices = solution.vertices
         for (let i = 0; i < problem.figure.edges.length; i++) {
             const [edgeFrom, edgeTo] = problem.figure.edges[i]
             ctx.moveTo(vertices[edgeFrom][0], vertices[edgeFrom][1])
@@ -80,6 +90,7 @@ export default function Problem({ id, problem, solution }: Props) {
         }
         ctx.strokeStyle = "#ff0000"
         ctx.stroke()
+
     }, [canvasRef, problem, solution]);
 
     return <canvas ref={canvasRef} width={SIZE} height={SIZE}></canvas>
