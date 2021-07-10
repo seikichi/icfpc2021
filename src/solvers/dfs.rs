@@ -1,6 +1,7 @@
 use crate::common::*;
 use geo::algorithm::contains::Contains;
 use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 
 static SEED: [u8; 32] = [
@@ -18,7 +19,7 @@ struct Solver {
 }
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
-    let solver = Solver {
+    let mut solver = Solver {
         original_vertices: input.figure.vertices.clone(),
         out_edges: make_out_edges(&input.figure.edges, input.figure.vertices.len()),
         epsilon: input.epsilon,
@@ -97,7 +98,7 @@ impl Solver {
     }
 
     fn naive_dfs(
-        &self,
+        &mut self,
         i: usize,
         vertices: &mut [Point],
         visited: &mut [bool],
@@ -109,7 +110,9 @@ impl Solver {
         let src = order[i];
         visited[src] = true;
 
-        for &p in self.holl_points.iter() {
+        let mut holl_points = self.holl_points.clone();
+        holl_points.shuffle(&mut self.rng);
+        for &p in holl_points.iter() {
             vertices[src] = p;
 
             // verify
