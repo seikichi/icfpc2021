@@ -20,19 +20,26 @@ pub fn solve(
         }
     }
     let mut best_dislike = calculate_dislike(&solution, &input.hole);
-    for i in 0..n {
-        if on_hole_vertex[i] {
+    for i in 0..m {
+        if satisfied[i] {
             continue;
         }
-        let temp = solution[i];
-        for j in 0..m {
-            if satisfied[j] {
+        for j in 0..n {
+            if on_hole_vertex[j] {
                 continue;
             }
-            solution[i] = hole_points[j];
+            let temp = solution[j];
+            solution[j] = hole_points[i];
+            let next_solution = fix_allowed_distance_violation(j, &solution, &input);
+            if next_solution.is_none() {
+                solution[j] = temp;
+                continue;
+            }
+            let next_solution = next_solution.unwrap();
+
             let dislike = calculate_dislike(&solution, &input.hole);
             if does_valid_pose(
-                &solution,
+                &next_solution,
                 &input.figure,
                 &input.hole,
                 input.epsilon,
@@ -40,11 +47,12 @@ pub fn solve(
                 None,
             ) && dislike <= best_dislike
             {
+                solution = next_solution;
                 best_dislike = dislike;
-                satisfied[j] = true;
+                satisfied[i] = true;
+                on_hole_vertex[j] = true;
                 break;
             }
-            solution[i] = temp;
         }
     }
     return (solution, best_dislike);
