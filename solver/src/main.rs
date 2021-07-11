@@ -17,6 +17,7 @@ fn main() {
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
     let use_physical = std::env::var("USE_PHYSICAL").is_ok();
+    let use_dfs2 = std::env::var("USE_DFS2").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
     let time_limit = {
         if let Ok(s) = std::env::var("TIME_LIMIT_SECONDS").or(std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS")) {
@@ -32,6 +33,10 @@ fn main() {
 
     if use_physical {
         return solve_with_physical(&input, time_limit);
+    }
+
+    if use_dfs2 {
+        return solve_with_dfs2(&input);
     }
 
     if let Some((solution1, dislike1)) = solvers::dfs::solve(&input, disable_dfs_centroid) {
@@ -103,6 +108,25 @@ fn solve_with_physical(input: &Input, time_limit: Duration) {
     solvers::physical::check_solution_quality(&input, &solution);
     if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
         eprintln!("Pose is invalid");
+        std::process::exit(1);
+    }
+}
+
+fn solve_with_dfs2(input: &Input) {
+    if let Some((solution, dislike)) = solvers::dfs2::solve(&input) {
+        eprintln!("dfs2: dislike = {}", dislike);
+
+        // output
+        let j = vertices_to_pose_json(&solution, &vec![], &vec![]);
+        println!("{}", j);
+        
+        solvers::physical::check_solution_quality(&input, &solution);
+        if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
+            eprintln!("Pose is invalid");
+            std::process::exit(1);
+        }
+    } else {
+        eprintln!("No solutions!!");
         std::process::exit(1);
     }
 }
