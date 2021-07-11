@@ -7,6 +7,13 @@ use inout::*;
 use std::time::Duration;
 
 fn main() {
+    let initial_solver: String = {
+        if let Ok(s) = std::env::var("INITIAL_SOLVER") {
+            s
+        } else {
+            "dfs".to_string()
+        }
+    };
     let used_bonus_types: Vec<BonusType> = {
         if let Ok(ss) = std::env::var("USED_BONUS_TYPES") {
             ss.split(",").map(|s| BonusType::from_str(&s)).collect()
@@ -25,11 +32,17 @@ fn main() {
             Duration::from_millis(2000)
         }
     };
+    eprintln!("initial_solver = {}", initial_solver);
     eprintln!("hill_climbing_time_limit = {:?}", hill_climbing_time_limit);
 
     let input = read_input();
-    if let Some((solution1, dislike1)) = solvers::dfs::solve(&input, disable_dfs_centroid) {
-        eprintln!("dfs: dislike = {}", dislike1);
+    let initial_solution = match initial_solver.as_str() {
+        "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
+        "shrink" => solvers::shrink::solve(&input),
+        _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
+    };
+    if let Some((solution1, dislike1)) = initial_solution {
+        eprintln!("initial: dislike = {}", dislike1);
 
         let solution2 = if skip_ortho {
             solution1
