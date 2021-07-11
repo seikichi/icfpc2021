@@ -1,10 +1,20 @@
 import re
 import json
 import sys
+import math
+from functools import cache
+from collections import defaultdict
 
 from pyscipopt import Model
 from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
+from shapely.geometry.polygon import Polygon, LineString
+
+MAX_D_FROM_HOLE = 1000
+
+
+def distance(x1, y1, x2, y2):
+    return (x1 - x2) ** 2 + (y1 - y2) ** 2
+
 
 problem_id = sys.argv[1]
 
@@ -24,74 +34,125 @@ candidates = [
     for x in range(xmin, xmax + 1)
     for y in range(ymin, ymax + 1)
     if hole.contains(Point(x, y)) or hole.boundary.contains(Point(x, y))
-    # if hole.boundary.contains(Point(x, y))
 ]
+
+epsilon = problem['epsilon']
+vertices = problem['figure']['vertices']
+edges = problem['figure']['edges']
+
+print(f"# of vertices = {len(vertices)}")
+print(f"# of hole = {len(problem['hole'])}")
 print(f"# of candidates = {len(candidates)}")
+
+rings_by_distance = defaultdict(list)
+
+points_by_distances = {}
+
+for (vi, wi) in edges:
+    vx, vy = vertices[vi]
+    wx, wy = vertices[wi]
+    d = distance(vx, vy, wx, wy)
+
+    c = (1.0 * d * epsilon) / 1e6
+    lb = math.ceil(d - c)
+    ub = math.floor(d + c)
+    for n in range(lb, ub + 1):
+        points_by_distances[n] = []
+
+for i in range(-xmax, xmax + 1):
+    for j in range(-ymax, ymax + 1):
+        d = distance(0, 0, i, j)
+        if d in points_by_distances:
+            points_by_distances[d].append((i, j))
+
+distance_candidates_by_hole = []
+
+for i in range(len(problem['hole'])):
+    hx, hy = problem['hole'][i]
+    ds = set()
+    for (cx, cy) in candidates:
+        d = distance(hx, hy, cx, cy)
+        if d <= MAX_D_FROM_HOLE:
+            ds.add(d)
+    distance_candidates_by_hole.append(ds)
 
 model = Model("icfpc2021")
 
 b = {}
-n = {}
+l = {}
 
 print("create variables (b) ...")
-for i in range(len(problem['figure']['vertices'])):
+for i in range(len(vertices)):
     for (cx, cy) in candidates:
         b[(i, cx, cy)] = model.addVar(vtype='B')
 
-print("create variables (n) ...")
-for (hx, hy) in problem['hole']:
-    for (cx, cy) in candidates:
-        # n[(hx, hy, cx, cy)] = model.addVar(vtype='I')
-        n[(hx, hy, cx, cy)] = model.addVar(vtype='C', lb=0, ub=1)
+print("create variables (l) ...")
+for i in range(len(problem['hole'])):
+    for d in distance_candidates_by_hole[i]:
+        l[(i, d)] = model.addVar(vtype="C", lb=0, ub=1)
+
 
 print("add sum b == 1 constraints ...")
-for i in range(len(problem['figure']['vertices'])):
+for i in range(len(vertices)):
     model.addCons(sum(b[(i, cx, cy)] for (cx, cy) in candidates) == 1)
 
-print("add sum n == 1 constraints ...")
-for (hx, hy) in problem['hole']:
-    model.addCons(sum(n[(hx, hy, cx, cy)] for (cx, cy) in candidates) == 1)
+print("add sum l == 1 constraints ...")
+for i in range(len(problem['hole'])):
+    model.addCons(sum(l[(i, d)] for d in distance_candidates_by_hole[i]) == 1)
 
-print("add n <= sum b constraints ...")
-for (hx, hy) in problem['hole']:
+print("add l <= sum b constraints ...")
+for i in range(len(problem['hole'])):
+    hx, hy = problem['hole'][i]
+    dic = defaultdict(list)
+
     for (cx, cy) in candidates:
-        model.addCons(n[(hx, hy, cx, cy)] <= sum(b[(i, cx, cy)]
-                      for i in range(len(problem['figure']['vertices']))))
+        d = distance(hx, hy, cx, cy)
+        dic[d].append((cx, cy))
 
+    for d in distance_candidates_by_hole[i]:
+        model.addCons(l[(i, d)] <= sum(b[(j, cx, cy)]
+                      for j in range(len(vertices)) for (cx, cy) in dic[d]))
 
-def d(x1, y1, x2, y2):
-    return (x1 - x2) ** 2 + (y1 - y2) ** 2
+print("add b <= sum b constraints for edges ...")
+for p, (vi, wi) in enumerate(edges):
+    print(f"{p} / {len(edges)} ...")
+    vx, vy = vertices[vi]
+    wx, wy = vertices[wi]
+    d = distance(vx, vy, wx, wy)
 
+    c = (1.0 * d * epsilon) / 1e6
+    lb = math.ceil(d - c)
+    ub = math.floor(d + c)
 
-# TODO: need to shrink...
-print("add b_i + b_j <= 1 constraints ...")
-epsilon = problem['epsilon']
-for (vi, wi) in problem['figure']['edges']:
-    vx, vy = problem['figure']['vertices'][vi]
-    wx, wy = problem['figure']['vertices'][wi]
-    for (cx1, cy1) in candidates:
-        for (cx2, cy2) in candidates:
-            d_before = d(vx, vy, wx, wy)
-            d_after = d(cx1, cy1, cx2, cy2)
-            if abs(d_after - d_before) * 1e6 > epsilon * d_before:
-                model.addCons(b[(vi, cx1, cy1)] +
-                              b[(wi, cx2, cy2)] <= 1)
+    for (cx, cy) in candidates:
+        points = []
+        for n in range(lb, ub + 1):
+            for (dx, dy) in points_by_distances[n]:
+                p = Point(cx + dx, cy + dy)
+                if not (hole.contains(p) or hole.boundary.contains(p)):
+                    continue
+                # Is the following condition correct?
+                if LineString([(cx, cy), (cx + dx, cy + dy)]).crosses(hole):
+                    continue
+                points.append((cx + dx, cy + dy))
+        model.addCons(b[(vi, cx, cy)] <= sum(b[(wi, nx, ny)]
+                      for (nx, ny) in points))
+        model.addCons(b[(wi, cx, cy)] <= sum(b[(vi, nx, ny)]
+                      for (nx, ny) in points))
+
 
 print("set objective ...")
 model.setObjective(sum(
-    d(hx, hy, cx, cy) * n[(hx, hy, cx, cy)]
-    for (hx, hy) in problem['hole']
-    for (cx, cy) in candidates
+    d * l[(i, d)]
+    for i in range(len(problem['hole']))
+    for d in distance_candidates_by_hole[i]
 ), "minimize")
 
-print("Optimize Start!")
 
+print("Optimize Start!")
 model.optimize()
 
 print("Optimal value:", model.getObjVal())
-
-# print(hole.contains(p))
-# print(hole.boundary.contains(p))
 
 vertices = []
 for i in range(len(problem['figure']['vertices'])):
