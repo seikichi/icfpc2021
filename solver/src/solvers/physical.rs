@@ -71,7 +71,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
             let op0 = original_vertices[i];
             
             // 1. エッジで繋がっている点からの力
-            let k = 1000.0 + 10000.0 * progress; // バネ定数
+            let k = 1000.0 + 20000.0 * progress; // バネ定数
             for &neighbor in out_edges[i].iter() {
                 let p1 = solution[neighbor];
                 let op1 = original_vertices[neighbor];
@@ -91,7 +91,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
             }
 
             // 3. ホールの外にいるときに戻る方向に働く力
-            let r = 1000.0 + 10000.0 * progress; // この力の係数
+            let r = 1000.0 + 20000.0 * progress; // この力の係数
             if !input.hole.contains(&p0) {
                 if let Closest::Intersection(p1) | Closest::SinglePoint(p1) = input.hole.closest_point(&p0) {
                     let dist = distance(&p0, &p1);
@@ -112,7 +112,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
             force = force * scale_factor;
 
             let mass = 10000.0; // 質量
-            let time_delta = 0.005; // 1フレームの時間
+            let time_delta = 0.0003 + 0.01 * (1.0 - progress); // 1フレームの時間
             let a = force / mass;
             velocities[i] = velocities[i] + a * time_delta;
             solution[i] = (solution[i].0 + velocities[i] * time_delta).into();
@@ -123,6 +123,35 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
         if current_score < best_score {
             best_score = current_score;
             best_solution = solution.clone();
+        }
+    }
+}
+
+pub fn check_solution_quality(input: &Input, solution: &[Point]) {
+    let n = input.figure.vertices.len();
+    let original_vertices = &input.figure.vertices;
+    let out_edges = make_out_edges(&input.figure.edges, n);
+
+    for i in 0..n {
+        let p0 = solution[i];
+        let op0 = original_vertices[i];
+
+        // eps の条件を調べる
+        let mut ok = true;
+        for &neighbor in out_edges[i].iter() {
+            let p1 = solution[neighbor];
+            let op1 = original_vertices[neighbor];
+
+            if !is_allowed_distance(&p0, &p1, &op0, &op1, input.epsilon) {
+                let r = Ring::from_epsilon(Point::new(0.0, 0.0), input.epsilon, squared_distance(&op0, &op1));
+                eprintln!("Invalid distance: allowed={}..{}, solution={}", r.inner_radius, r.outer_radius, distance(&p0, &p1));
+                ok = false;
+            }
+        }
+        if ok {
+            eprintln!("i={}: ok", i)
+        } else {
+            eprintln!("i={}: fail", i)
         }
     }
 }

@@ -99,6 +99,8 @@ fn solve_with_physical(input: &Input, time_limit: Duration) {
     // output
     let j = vertices_to_pose_json(&solution, &vec![], &vec![]);
     println!("{}", j);
+    
+    solvers::physical::check_solution_quality(&input, &solution);
     if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
         eprintln!("Pose is invalid");
         std::process::exit(1);

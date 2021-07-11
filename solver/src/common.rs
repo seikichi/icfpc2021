@@ -278,9 +278,9 @@ fn test_calculate_dislike() {
 
 #[derive(Debug, Clone)]
 pub struct Ring {
-    center: Point,
-    inner_radius: f64,
-    outer_radius: f64,
+    pub center: Point,
+    pub inner_radius: f64,
+    pub outer_radius: f64,
 }
 
 const EPS: f64 = 1e-8;
