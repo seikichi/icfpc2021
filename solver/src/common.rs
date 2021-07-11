@@ -15,6 +15,30 @@ impl Edge {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum BonusType {
+    Globalist,
+    BreakALeg,
+    WallHack,
+}
+impl BonusType {
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "GLOBALIST" => BonusType::Globalist,
+            "BREAK_A_LEG" => BonusType::BreakALeg,
+            "WALLHACK" => BonusType::WallHack,
+            _ => panic!("Invalid Bonus String {}", s),
+        }
+    }
+    pub fn to_string(&self) -> String {
+        match self {
+            BonusType::Globalist => "GLOBALIST".to_string(),
+            BonusType::BreakALeg => "BREAK_A_LEG".to_string(),
+            BonusType::WallHack => "WALLHACK".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Figure {
     pub edges: Vec<Edge>,
@@ -77,7 +101,12 @@ pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
     true
 }
 
-pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, epsilon: i64) -> bool {
+pub fn does_valid_pose(
+    vertices: &Vec<Point>,
+    figure: &Figure,
+    hole: &Polygon,
+    epsilon: i64,
+) -> bool {
     let f = Figure {
         edges: figure.edges.clone(),
         vertices: vertices.clone(),
@@ -87,7 +116,9 @@ pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, e
         let p2 = vertices[e.w];
         let original_p1 = figure.vertices[e.v];
         let original_p2 = figure.vertices[e.w];
-        if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon) { return false; }
+        if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon) {
+            return false;
+        }
     }
     return does_figure_fit_in_hole(&f, &hole);
 }
@@ -95,13 +126,20 @@ pub fn does_valid_pose(vertices: &Vec<Point>, figure: &Figure, hole: &Polygon, e
 #[test]
 pub fn test_does_valid_pose() {
     let mut ps1 = vec![];
-    ps1.push(Point::new(34.0,22.0));
-    ps1.push(Point::new(10.0,24.0));
-    ps1.push(Point::new(11.0,21.0));
-    ps1.push(Point::new(23.0,5.0));
-    ps1.push(Point::new(0.0,0.0));
-    let input = crate::inout::parse_input(&r#"{"hole":[[23,0],[32,2],[24,6],[31,9],[36,12],[36,26],[29,18],[24,22],[21,27],[30,32],[18,34],[10,38],[12,30],[6,28],[0,32],[0,20],[8,22],[5,14],[1,6],[0,0],[6,0],[12,3],[17,0]],"epsilon":15010,"figure":{"edges":[[0,1],[0,2],[1,3],[2,4],[3,4]],"vertices":[[0,7],[0,31],[22,0],[22,38],[36,19]]}}"#);
-    assert!(!does_valid_pose(&ps1, &input.figure, &input.hole, input.epsilon));
+    ps1.push(Point::new(34.0, 22.0));
+    ps1.push(Point::new(10.0, 24.0));
+    ps1.push(Point::new(11.0, 21.0));
+    ps1.push(Point::new(23.0, 5.0));
+    ps1.push(Point::new(0.0, 0.0));
+    let input = crate::inout::parse_input(
+        &r#"{"hole":[[23,0],[32,2],[24,6],[31,9],[36,12],[36,26],[29,18],[24,22],[21,27],[30,32],[18,34],[10,38],[12,30],[6,28],[0,32],[0,20],[8,22],[5,14],[1,6],[0,0],[6,0],[12,3],[17,0]],"epsilon":15010,"figure":{"edges":[[0,1],[0,2],[1,3],[2,4],[3,4]],"vertices":[[0,7],[0,31],[22,0],[22,38],[36,19]]}}"#,
+    );
+    assert!(!does_valid_pose(
+        &ps1,
+        &input.figure,
+        &input.hole,
+        input.epsilon
+    ));
 }
 
 // #[test]
@@ -359,7 +397,6 @@ fn test_each_ring_points() {
     assert!(points7[2] == Point::new(0.0, 0.0));
     assert!(points7[3] == Point::new(1.0, 0.0));
     assert!(points7[4] == Point::new(0.0, 1.0));
-
 }
 
 #[test]
