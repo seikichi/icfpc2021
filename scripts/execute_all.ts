@@ -16,14 +16,28 @@ const TableName = "Problems";
         })
     }
 
-    const prompt = new Confirm(`Are you sure to kick lambda for all the problems? : env = ${JSON.stringify(env)}`)
+    const prompt = new Confirm({
+        message: `Are you sure to kick lambda for all the problems? : env = ${JSON.stringify(env)}`,
+        default: false
+    })
     const confirm = await prompt.run()
     if (!confirm) {
         console.log("Aborted")
         return
     }
 
-    const problems = (await dynamoClient.scan({ TableName }).promise()).Items!
+    let ExclusiveStartKey = undefined;
+    let problems: any[] = []
+
+    do {
+        const result: any = await dynamoClient.scan({
+            TableName,
+            ExclusiveStartKey
+        }).promise()
+        problems = problems.concat(result.Items!)
+        ExclusiveStartKey = result.LastEvaluatedKey
+    } while (ExclusiveStartKey)
+
     for (const p of problems) {
         const id = p.ProblemId
 
