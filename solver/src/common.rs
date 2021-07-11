@@ -3,7 +3,7 @@ pub type Polygon = geo::Polygon<f64>;
 pub type Line = geo::Line<f64>;
 use geo::algorithm::contains::Contains;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Edge {
     pub v: usize,
     pub w: usize,

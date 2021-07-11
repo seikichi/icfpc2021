@@ -11,7 +11,7 @@ export class AutomationStack extends cdk.Stack {
     super(scope, id, props);
 
     // get commit Hash 
-    const commitHash = child_process.execSync("git rev-parse --short HEAD").toString()
+    const commitHash = child_process.execSync("git rev-parse --short HEAD").toString().trim()
 
     const fun = new lambda.DockerImageFunction(this, "Solver", {
       code: lambda.DockerImageCode.fromImageAsset("../solver"),
