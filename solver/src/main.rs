@@ -3,7 +3,7 @@ mod inout;
 mod solvers;
 
 use crate::common::*;
-use inout::*;
+use crate::inout::*;
 use std::time::Duration;
 
 fn main() {
@@ -16,18 +16,24 @@ fn main() {
     };
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
+    let use_physical = std::env::var("USE_PHYSICAL").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
-    let hill_climbing_time_limit = {
-        if let Ok(s) = std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS") {
-            let f: f64 = s.parse().expect("Invalid HILL_CLIMBING_TIME_LIMIT_SECONDS");
+    let time_limit = {
+        if let Ok(s) = std::env::var("TIME_LIMIT_SECONDS").or(std::env::var("HILL_CLIMBING_TIME_LIMIT_SECONDS")) {
+            let f: f64 = s.parse().expect("Invalid TIME_LIMIT_SECONDS");
             Duration::from_secs_f64(f)
         } else {
             Duration::from_millis(2000)
         }
     };
-    eprintln!("hill_climbing_time_limit = {:?}", hill_climbing_time_limit);
+    eprintln!("time_limit = {:?}", time_limit);
 
     let input = read_input();
+
+    if use_physical {
+        return solve_with_physical(&input, time_limit);
+    }
+
     if let Some((solution1, dislike1)) = solvers::dfs::solve(&input, disable_dfs_centroid) {
         eprintln!("dfs: dislike = {}", dislike1);
 
@@ -44,10 +50,10 @@ fn main() {
 
         let (solution3, dislike3) = if use_hill_climbing {
             eprintln!("hill climbing...");
-            solvers::hill_climbing::solve(&input, solution2, hill_climbing_time_limit)
+            solvers::hill_climbing::solve(&input, solution2, time_limit)
         } else {
             eprintln!("annealing...");
-            solvers::annealing::solve(&input, solution2, hill_climbing_time_limit)
+            solvers::annealing::solve(&input, solution2, time_limit)
         };
         eprintln!("hill_climbing/annealing: dislike = {}", dislike3);
 
@@ -82,6 +88,19 @@ fn main() {
         }
     } else {
         eprintln!("No solutions");
+        std::process::exit(1);
+    }
+}
+
+fn solve_with_physical(input: &Input, time_limit: Duration) {
+    let (solution, dislike) = solvers::physical::solve(&input, time_limit);
+    eprintln!("physical: dislike = {}", dislike);
+
+    // output
+    let j = vertices_to_pose_json(&solution, &vec![], &vec![]);
+    println!("{}", j);
+    if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
+        eprintln!("Pose is invalid");
         std::process::exit(1);
     }
 }

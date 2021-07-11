@@ -66,6 +66,10 @@ pub fn squared_distance(a: &Point, b: &Point) -> f64 {
     dx * dx + dy * dy
 }
 
+pub fn distance(a: &Point, b: &Point) -> f64 {
+    squared_distance(a, b).sqrt()
+}
+
 pub fn calculate_dislike(vertices: &[Point], hole: &Polygon) -> f64 {
     let mut s = 0.0;
     for h in hole.exterior().points_iter().skip(1) {
