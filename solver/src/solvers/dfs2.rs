@@ -2,6 +2,8 @@ use crate::common::*;
 use std::collections::HashSet;
 use geo::algorithm::contains::Contains;
 
+type Vector2d = geo::Coordinate<f64>;
+
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let n = input.figure.vertices.len();
 
@@ -156,8 +158,25 @@ impl Solver {
         let op1 = self.original[dst];
         let ring = Ring::from_epsilon(p0, self.epsilon, squared_distance(&op0, &op1));
 
+        let mut candidates = ring_points(&ring);
+
+        // candidates をよさげな順番に並べたい
+        candidates.sort_by_key(|p1| {
+            // すでに決まっているエッジの方向とはできるだけ違う方向に行きたい
+            let v1 = p1.0 - p0.0;
+            let mut sim = 0.0;
+            for &w in self.out_edges[src].iter() {
+                if determined[w] {
+                    let p2 = solution[w];
+                    let v2 = p2.0 - p0.0;
+                    sim += cosine_sim(v1, v2);
+                }
+            }
+            (sim * 100000.0) as i32
+        });
+
         // TODO: ヒューリスティックを入れる
-        for p1 in ring_points(&ring).iter() {
+        for p1 in candidates.iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
                 if self.dfs(i + 1, order, solution, determined) {
@@ -170,6 +189,21 @@ impl Solver {
         determined[dst] = false;
         false
     }
+}
+
+fn dot(v1: Vector2d, v2: Vector2d) -> f64 {
+    v1.x * v2.x + v1.y * v2.y
+}
+
+fn unit_vector(v: Vector2d) -> Vector2d {
+    let l = dot(v, v).sqrt();
+    v / l
+}
+
+fn cosine_sim(mut v1: Vector2d, mut v2: Vector2d) -> f64 {
+    v1 = unit_vector(v1);
+    v2 = unit_vector(v2);
+    dot(v1, v2)
 }
 
 fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
