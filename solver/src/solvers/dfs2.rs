@@ -52,6 +52,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
 #[derive(Debug, Clone)]
 struct State {
     i: usize,
+    dislike: f64,
     solution: Vec<Point>,
     determined: Vec<bool>,
 }
@@ -123,7 +124,7 @@ impl Solver {
     }
 
     fn search(&self, order: &[Edge]) -> Option<(Vec<Point>, f64)> {
-        let mut queue: VecDeque<State> = VecDeque::new();
+        let mut queue: Vec<State> = Vec::new();
         let mut rng = SmallRng::from_seed(SEED);
         let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
 
@@ -139,8 +140,11 @@ impl Solver {
             solution[v] = pos;
             determined[v] = true;
 
-            queue.push_back(State {
+            let dislike = calculate_dislike_determined_only(&solution, &self.hole, &determined);
+
+            queue.push(State {
                 i: 0,
+                dislike,
                 solution: solution,
                 determined: determined,
             });
@@ -150,7 +154,12 @@ impl Solver {
         let mut best_dislike = 1e20;
 
         while queue.len() > 0 {
-            let state = queue.pop_front().unwrap();
+            let max_queue_size = 500;
+            queue.sort_by(|a, b| a.dislike.partial_cmp(&b.dislike).unwrap());
+            queue.truncate(max_queue_size);
+            queue.reverse();
+
+            let state = queue.pop().unwrap();
             if let Some((solution, dislike)) = self.generate_next_states(state, order, &mut queue) {
                 if dislike < best_dislike {
                     best_solution = Some(solution);
@@ -164,12 +173,11 @@ impl Solver {
 
     fn generate_next_states(
         &self, state: State, order: &[Edge],
-        queue: &mut VecDeque<State>,
+        queue: &mut Vec<State>,
     ) -> Option<(Vec<Point>, f64)> {
-        let State { i, mut solution, mut determined } = state;
+        let State { i, dislike, mut solution, mut determined } = state;
 
         if i == self.edge_count {
-            let dislike = calculate_dislike(&solution, &self.hole);
             return Some((solution, dislike));
         }
 
@@ -188,9 +196,10 @@ impl Solver {
                 false,
             ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
             if ok {
-                queue.push_back(
+                queue.push(
                     State {
                         i: i + 1,
+                        dislike,
                         solution: solution,
                         determined: determined,
                     }
@@ -227,17 +236,18 @@ impl Solver {
         });
 
         // 間引く
-        let max_candidates = 20;
+        let max_candidates = 4;
         if candidates.len() > max_candidates {
             candidates = candidates.iter().step_by(candidates.len() / max_candidates).copied().collect();
         }
 
-        // TODO: ヒューリスティックを入れる
         for p1 in candidates.iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
-                queue.push_back(State {
+                let new_dislike = calculate_dislike_determined_only(&solution, &self.hole, &determined);
+                queue.push(State {
                     i: i + 1,
+                    dislike: new_dislike,
                     solution: solution.clone(),
                     determined: determined.clone(),
                 });
@@ -246,6 +256,19 @@ impl Solver {
 
         None
     }
+}
+
+fn calculate_dislike_determined_only(vertices: &[Point], hole: &Polygon, determined: &[bool]) -> f64 {
+    let mut s = 0.0;
+    for h in hole.exterior().points_iter().skip(1) {
+        s += vertices
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| determined[*i])
+            .map(|(_, v)| squared_distance(v, &h))
+            .fold(0.0 / 0.0, |m, x| x.min(m));
+    }
+    s
 }
 
 fn dot(v1: Vector2d, v2: Vector2d) -> f64 {
