@@ -8,8 +8,6 @@ from pyscipopt import Model
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon, LineString
 
-MAX_D_FROM_HOLE = 1000
-
 
 def distance(x1, y1, x2, y2):
     return (x1 - x2) ** 2 + (y1 - y2) ** 2
@@ -109,18 +107,14 @@ for i, (vi, wi) in enumerate(edges):
     wx, wy = vertices[wi]
     d = distance(vx, vy, wx, wy)
     c = (1.0 * d * epsilon) / 1e6
-    lb = math.ceil(d - c)
-    ub = math.floor(d + c)
 
     model.addCons(
         (sum(dx * dx * elx[i][dx] for dx in dx_candidates_of_edge[i]) +
-         sum(dy * dy * ely[i][dy] for dy in dy_candidates_of_edge[i]) -
-         d) <= c
+         sum(dy * dy * ely[i][dy] for dy in dy_candidates_of_edge[i])) <= d + c
     )
     model.addCons(
         (sum(dx * dx * elx[i][dx] for dx in dx_candidates_of_edge[i]) +
-         sum(dy * dy * ely[i][dy] for dy in dy_candidates_of_edge[i]) -
-         d) >= -c
+         sum(dy * dy * ely[i][dy] for dy in dy_candidates_of_edge[i])) >= d - c
     )
 
 for j in range(len(vertices)):
@@ -145,7 +139,7 @@ for i in range(len(hole)):
 for i in range(len(hole)):
     model.addCons(sum(sign[i][j] for j in range(len(vertices))) == 1)
 
-MAX_D = 300
+MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
 hdlx = []
 hdly = []
 for i in range(len(hole)):
@@ -159,7 +153,7 @@ for i in range(len(hole)):
     model.addCons(sum(hdlx[i][j] for j in range(MAX_D)) == 1)
     model.addCons(sum(hdly[i][j] for j in range(MAX_D)) == 1)
 
-M = 10000
+M = 1000000
 
 for i in range(len(hole)):
     hx, hy = hole[i]
@@ -198,10 +192,23 @@ result = []
 for i in range(len(vertices)):
     print(i)
     vx, vy = vertices[i]
-    nx = int(model.getVal(pvx[i]))
-    ny = int(model.getVal(pvy[i]))
+    nx = model.getVal(pvx[i])
+    ny = model.getVal(pvy[i])
     print(f"({nx}, {ny}) <- ({vx}, {vy})")
-    result.append([nx, ny])
+    result.append([int(round(nx)), int(round(ny))])
+
+# for i, (vi, wi) in enumerate(edges):
+#     print(f"edge {i}: {vi} -> {wi}")
+#     for dx in dx_candidates_of_edge[i]:
+#         if model.getVal(elx[i][dx]) > 0.5:
+#             print(f"elx[{i}][{dx}] = {model.getVal(elx[i][dx])}")
+#             print(f"pvx[{vi}] = {model.getVal(pvx[vi])}")
+#             print(f"pvx[{wi}] = {model.getVal(pvx[wi])}")
+#     for dy in dy_candidates_of_edge[i]:
+#         if model.getVal(ely[i][dy]) > 0.5:
+#             print(f"ely[{i}][{dy}] = {model.getVal(ely[i][dy])}")
+#             print(f"pvy[{vi}] = {model.getVal(pvy[vi])}")
+#             print(f"pvy[{wi}] = {model.getVal(pvy[wi])}")
 
 
 with open(f"solutions/new-{problem_id}.solution", 'w', encoding='utf-8') as f:
