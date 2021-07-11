@@ -116,7 +116,7 @@ fn solve_with_dfs2(input: &Input, used_bonus_types: &Vec<BonusType>) {
         // output
         let j = vertices_to_pose_json(&solution, &used_bonus_types, &None);
         println!("{}", j);
-        solvers::physical::check_solution_quality(&input, &solution);
+        //solvers::physical::check_solution_quality(&input, &solution);
         if !common::does_valid_pose(
             &solution,
             &input.figure,
