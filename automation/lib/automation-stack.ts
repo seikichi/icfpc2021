@@ -32,5 +32,6 @@ export class AutomationStack extends cdk.Stack {
     });
 
     problems.grantReadWriteData(fun); // TODO: Change to grantReadData
+    solutions.grantReadWriteData(fun);
   }
 }

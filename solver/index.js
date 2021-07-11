@@ -67,7 +67,7 @@ exports.handler = async function (event, context) {
         input: JSON.stringify(problem),
         env: {
             HILL_CLIMBING_TIME_LIMIT_SECONDS: `${MAX_MINUTES * 60}`,
-            DISABLE_DFS_CENTROID: '1',
+            // DISABLE_DFS_CENTROID: '1',
             RUST_BACKTRACE: '1'
         }
     }));
