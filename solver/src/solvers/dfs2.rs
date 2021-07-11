@@ -16,26 +16,30 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let vertex2tecomp = make_vertex_to_tecomp_id(&tecomp, n);
     let tecomp_out_edges = make_tecomp_out_edges(&bridges, &tecomp, &vertex2tecomp);
 
-    eprintln!("bridges = {:?}", bridges);
-    eprintln!("tecomp = {:?}", tecomp);
+    //eprintln!("bridges = {:?}", bridges);
+    //eprintln!("tecomp = {:?}", tecomp);
 
     let solver = Solver {
-        vertex_count: out_edges.len(),
-        out_edges, bridges, tecomp, vertex2tecomp, tecomp_out_edges,
+        //vertex_count: out_edges.len(),
+        edge_count: input.figure.edges.len(),
+        out_edges,
+        //bridges,
+        tecomp,
+        vertex2tecomp,
+        tecomp_out_edges,
         epsilon: input.epsilon,
         original: input.figure.vertices.clone(),
         hole: input.hole.clone(),
     };
 
     let order = solver.reorder();
-    eprintln!("reorder = {:?}", order);
-
+    //eprintln!("reorder = {:?}", order);
     assert_eq!(order.len(), input.figure.edges.len());
 
     let mut solution = input.figure.vertices.clone();
-    let mut determined = vec![false; n];
 
     for pos in all_points_in_hole(&input.hole) {
+        let mut determined = vec![false; n];
         let v = order[0].v;
         solution[v] = pos;
         determined[v] = true;
@@ -49,9 +53,10 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
 }
 
 struct Solver {
-    vertex_count: usize,
+    //vertex_count: usize,
+    edge_count: usize,
     out_edges: Vec<Vec<usize>>,
-    bridges: Vec<Edge>,
+    //bridges: Vec<Edge>,
     tecomp: Vec<Vec<usize>>,
     vertex2tecomp: Vec<usize>,
     tecomp_out_edges: Vec<Vec<(usize, Edge)>>,
@@ -118,7 +123,7 @@ impl Solver {
         order: &[Edge],
         solution: &mut [Point], determined: &mut [bool],
     ) -> bool {
-        if i == self.vertex_count {
+        if i == self.edge_count {
             return true;
         }
 

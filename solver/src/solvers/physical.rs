@@ -128,6 +128,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
     }
 }
 
+#[allow(dead_code)]
 pub fn check_solution_quality(input: &Input, solution: &[Point]) {
     let n = input.figure.vertices.len();
     let original_vertices = &input.figure.vertices;
