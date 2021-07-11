@@ -66,6 +66,10 @@ pub fn squared_distance(a: &Point, b: &Point) -> f64 {
     dx * dx + dy * dy
 }
 
+pub fn distance(a: &Point, b: &Point) -> f64 {
+    squared_distance(a, b).sqrt()
+}
+
 pub fn calculate_dislike(vertices: &[Point], hole: &Polygon) -> f64 {
     let mut s = 0.0;
     for h in hole.exterior().points_iter().skip(1) {
@@ -208,13 +212,15 @@ pub fn test_does_valid_pose() {
     ps1.push(Point::new(23.0, 5.0));
     ps1.push(Point::new(0.0, 0.0));
     let input = crate::inout::parse_input(
-        &r#"{"hole":[[23,0],[32,2],[24,6],[31,9],[36,12],[36,26],[29,18],[24,22],[21,27],[30,32],[18,34],[10,38],[12,30],[6,28],[0,32],[0,20],[8,22],[5,14],[1,6],[0,0],[6,0],[12,3],[17,0]],"epsilon":15010,"figure":{"edges":[[0,1],[0,2],[1,3],[2,4],[3,4]],"vertices":[[0,7],[0,31],[22,0],[22,38],[36,19]]}}"#,
+        &r#"{"hole":[[23,0],[32,2],[24,6],[31,9],[36,12],[36,26],[29,18],[24,22],[21,27],[30,32],[18,34],[10,38],[12,30],[6,28],[0,32],[0,20],[8,22],[5,14],[1,6],[0,0],[6,0],[12,3],[17,0]],"epsilon":15010,"figure":{"edges":[[0,1],[0,2],[1,3],[2,4],[3,4]],"vertices":[[0,7],[0,31],[22,0],[22,38],[36,19]]},"bonuses":[]}"#,
     );
     assert!(!does_valid_pose(
         &ps1,
         &input.figure,
         &input.hole,
-        input.epsilon
+        input.epsilon,
+        &vec![],
+        None
     ));
 }
 
@@ -274,9 +280,9 @@ fn test_calculate_dislike() {
 
 #[derive(Debug, Clone)]
 pub struct Ring {
-    center: Point,
-    inner_radius: f64,
-    outer_radius: f64,
+    pub center: Point,
+    pub inner_radius: f64,
+    pub outer_radius: f64,
 }
 
 const EPS: f64 = 1e-8;
@@ -569,24 +575,37 @@ pub fn fix_allowed_distance_violation(
                 if !determined[to] {
                     continue;
                 }
-                let distance_ratio = calc_distance_ratio(
+                let d1 = calc_distance_ratio(
                     &solution[to],
                     &p,
                     &input.figure.vertices[to],
                     &input.figure.vertices[from],
                 );
-                if distance_ratio.abs() + 1e-6 <= input.epsilon as f64 / 1000000.0 {
+                if d1.abs() + 1e-6 <= input.epsilon as f64 / 1000000.0 {
                     continue;
                 }
-                // distance_ratioが条件を満たしてない場合は満たすように移動させる
+                // 距離が条件を満たしてない場合は満たすように移動させる
+                let distance_ratio = squared_distance(&solution[to], &p).sqrt()
+                    / squared_distance(&input.figure.vertices[to], &input.figure.vertices[from])
+                        .sqrt()
+                    - 1.0;
                 let vect = (solution[to] - solution[from])
-                    * (distance_ratio - input.epsilon as f64 / 1000000.0);
+                    * distance_ratio
+                    * (input.epsilon as f64 / 1000000.0).sqrt();
+                // eprintln!(
+                //     "{} {} {} {:?}",
+                //     squared_distance(&solution[to], &p).sqrt(),
+                //     squared_distance(&input.figure.vertices[to], &input.figure.vertices[from])
+                //         .sqrt(),
+                //     distance_ratio,
+                //     vect
+                // );
                 p = p + vect;
             }
         }
         let mut ok = false;
         // マンハッタン距離r以内の全点を試す
-        'outer_loop: for r in 0i64..3i64 {
+        'outer_loop: for r in 0i64..5i64 {
             for dx in -r..=r {
                 let mut dys = vec![r - dx.abs(), -r + dx.abs()];
                 dys.dedup();
@@ -605,6 +624,9 @@ pub fn fix_allowed_distance_violation(
                         input.epsilon,
                         &determined,
                     ) {
+                        // if dx != 0 || dy != 0 {
+                        //     eprintln!("move: {} {:?}", from, candidate_p - solution[from]);
+                        // }
                         solution[from] = candidate_p;
                         ok = true;
                         break 'outer_loop;
