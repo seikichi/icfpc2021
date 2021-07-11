@@ -334,6 +334,17 @@ pub fn is_allowed_distance(
     lo <= middle && middle <= hi
 }
 
+pub fn calc_distance_ratio(
+    p1: &Point,
+    p2: &Point,
+    original_p1: &Point,
+    original_p2: &Point,
+) -> f64 {
+    let sd = squared_distance(&p1, &p2);
+    let original_sd = squared_distance(&original_p1, &original_p2);
+    return sd / original_sd - 1.0;
+}
+
 #[test]
 fn test_is_allowed_distance() {
     let p1 = Point::new(10.0, 0.0);
@@ -503,4 +514,152 @@ pub fn make_out_edges(edges: &[Edge], n_vertices: usize) -> Vec<Vec<usize>> {
         out_edges[e.w].push(e.v);
     }
     out_edges
+}
+
+pub fn make_determined_order(out_edges: &Vec<Vec<usize>>, start: Option<usize>) -> Vec<usize> {
+    let n = out_edges.len();
+    let mut order = vec![0; n];
+    let mut determined = vec![false; n];
+    let mut start_index = 0;
+    if let Some(s) = start {
+        order[0] = s;
+        determined[s] = true;
+        start_index = 1;
+    }
+    for i in start_index..n {
+        let mut best = (0, 0, 0);
+        for j in 0..n {
+            if determined[j] {
+                continue;
+            }
+            let mut jisu = 0;
+            for &k in out_edges[j].iter() {
+                if determined[k] {
+                    jisu += 1;
+                }
+            }
+            let score = (jisu, out_edges[j].len(), j);
+            if best < score {
+                best = score;
+            }
+        }
+        order[i] = best.2;
+        determined[order[i]] = true;
+    }
+    order
+}
+
+pub fn fix_allowed_distance_violation(
+    start_point_index: usize,
+    solution: &Vec<Point>,
+    input: &Input,
+) -> Option<Vec<Point>> {
+    let mut solution = solution.clone();
+    let n = input.figure.vertices.len();
+    let out_edges = make_out_edges(&input.figure.edges, n);
+    let order = make_determined_order(&out_edges, Some(start_point_index));
+    let mut determined = vec![false; n];
+    determined[start_point_index] = true;
+    for index in 1..n {
+        let from = order[index];
+        determined[from] = true;
+        let mut p = solution[from];
+        for _iteration in 0..3 {
+            for &to in out_edges[from].iter() {
+                if !determined[to] {
+                    continue;
+                }
+                let distance_ratio = calc_distance_ratio(
+                    &solution[to],
+                    &p,
+                    &input.figure.vertices[to],
+                    &input.figure.vertices[from],
+                );
+                if distance_ratio.abs() + 1e-6 <= input.epsilon as f64 / 1000000.0 {
+                    continue;
+                }
+                // distance_ratioが条件を満たしてない場合は満たすように移動させる
+                let vect = (solution[to] - solution[from])
+                    * (distance_ratio - input.epsilon as f64 / 1000000.0);
+                p = p + vect;
+            }
+        }
+        let mut ok = false;
+        // マンハッタン距離r以内の全点を試す
+        'outer_loop: for r in 0i64..3i64 {
+            for dx in -r..=r {
+                let mut dys = vec![r - dx.abs(), -r + dx.abs()];
+                dys.dedup();
+                for &dy in dys.iter() {
+                    let candidate_p = Point::new(
+                        (p.x() + dx as f64 + 0.5).floor(),
+                        (p.y() + dy as f64 + 0.5).floor(),
+                    );
+                    if is_allowed_distance_point_move(
+                        from,
+                        &candidate_p,
+                        &solution,
+                        &input.figure.vertices,
+                        &out_edges,
+                        &input.hole,
+                        input.epsilon,
+                        &determined,
+                    ) {
+                        solution[from] = candidate_p;
+                        ok = true;
+                        break 'outer_loop;
+                    }
+                }
+            }
+        }
+        if !ok {
+            return None;
+        }
+    }
+
+    if !does_valid_pose(
+        &solution,
+        &input.figure,
+        &input.hole,
+        input.epsilon,
+        &vec![],
+        None,
+    ) {
+        return None;
+    }
+
+    return Some(solution);
+}
+
+fn is_allowed_distance_point_move(
+    index: usize,
+    p: &Point,
+    solution: &[Point],
+    original_vertices: &[Point],
+    out_edges: &[Vec<usize>],
+    hole: &Polygon,
+    epsilon: i64,
+    determined: &[bool],
+) -> bool {
+    let ok1 = out_edges[index].iter().all(|&dst| {
+        !determined[dst]
+            || is_allowed_distance(
+                &p,
+                &solution[dst],
+                &original_vertices[index],
+                &original_vertices[dst],
+                epsilon,
+                false,
+            )
+    });
+    if !ok1 {
+        return false;
+    }
+    let ok2 = out_edges[index]
+        .iter()
+        .all(|&dst| !determined[dst] || does_line_fit_in_hole(&p, &solution[dst], hole));
+    if !ok2 {
+        return false;
+    }
+    return true;
 }

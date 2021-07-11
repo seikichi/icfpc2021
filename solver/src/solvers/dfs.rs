@@ -30,7 +30,7 @@ pub fn solve(input: &Input, disable_dfs_centroid: bool) -> Option<(Vec<Point>, f
     };
     let mut vertices = input.figure.vertices.clone();
     let mut visited = vec![false; input.figure.vertices.len()];
-    let order = solver.reorder(vertices.len());
+    let order = make_determined_order(&solver.out_edges, None);
 
     if solver.naive_dfs(0, &mut vertices, &mut visited, &order) {
         let dislike = calculate_dislike(&vertices, &input.hole);
@@ -62,32 +62,6 @@ impl Solver {
         }
     }
     */
-
-    fn reorder(&self, n: usize) -> Vec<usize> {
-        let mut order = vec![0; n];
-        let mut determined = vec![false; n];
-        for i in 0..n {
-            let mut best = (0, 0, 0);
-            for j in 0..n {
-                if determined[j] {
-                    continue;
-                }
-                let mut jisu = 0;
-                for &k in self.out_edges[j].iter() {
-                    if determined[k] {
-                        jisu += 1;
-                    }
-                }
-                let score = (jisu, self.out_edges[j].len(), j);
-                if best < score {
-                    best = score;
-                }
-            }
-            order[i] = best.2;
-            determined[order[i]] = true;
-        }
-        order
-    }
 
     fn naive_dfs(
         &mut self,
