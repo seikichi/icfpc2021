@@ -1,6 +1,6 @@
 use crate::common::*;
 use std::collections::HashSet;
-//use geo::algorithm::contains::Contains;
+use geo::algorithm::contains::Contains;
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let n = input.figure.vertices.len();
@@ -31,6 +31,19 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     eprintln!("reorder = {:?}", order);
 
     assert_eq!(order.len(), input.figure.edges.len());
+
+    let mut solution = input.figure.vertices.clone();
+    let mut determined = vec![false; n];
+
+    for pos in all_points_in_hole(&input.hole) {
+        let v = order[0].v;
+        solution[v] = pos;
+        determined[v] = true;
+        if solver.dfs(0, &order, &mut solution, &mut determined) {
+            let dislike = calculate_dislike(&solution, &input.hole);
+            return Some((solution, dislike));
+        }
+    }
 
     None
 }
@@ -100,96 +113,39 @@ impl Solver {
         }
     }
 
-    /*
-    // 耳分解
-    fn ear_decomposition(self, tecomp_id: usize, start_vertex: usize) -> Vec<Vec<Edge>> {
-        let mut visited = vec![false; self.vertex_count];
-
-        // start_vertex を含む閉路を取ってくる
-        let mut cycle: Vec<Edge> = vec![];
-        self.find_loop(tecomp_id, start_vertex, &mut visited, &mut cycle);
-
-    }
-
-    fn find_loop(
-        self, tecomp_id: usize, v: usize, visited: &mut [bool], path: &mut Vec<Edge>
-    ) {
-        if visited[v] {
-            return;
+    fn dfs(
+        &self, i: usize,
+        order: &[Edge],
+        solution: &mut [Point], determined: &mut [bool],
+    ) -> bool {
+        if i == self.vertex_count {
+            return true;
         }
-        visited[v] = true;
 
-        for &w in self.out_edges[v].iter() {
-            if self.vertex2tecomp[w] == tecomp_id {
-                path.push(Edge::new(v, w));
-                return self.find_loop(tecomp_id, w, visited, path);
-            }
-        }
-        unreachable!();
-    }
+        let src = order[i].v;
+        let dst = order[i].w;
 
-    fn dfs_over_tecomps(
-        self, tecomp_id: usize, start_vertex: usize,
-        tecomp_visited: &mut [bool],
-        solution: &mut [Point],
-    ) {
-        tecomp_visited[tecomp_id] = true;
-
-        self.dfs_within_tecomp(tecomp_id, start_vertex, solution);
-
-        for (tecomp_dst, bridge) in self.tecomp_out_edges[tecomp_id] {
-            if tecomp_visited[tecomp_dst] {
-                continue;
-            }
-
-            // TODO: bridge.w の位置を決める。
-
-            self.dfs_over_tecomps(tecomp_dst, bridge.w, tecomp_visited, solution);
-        }
-    }
-
-    fn dfs_within_tecomp(
-        self, tecomp_id: usize, start_vertex: usize,
-        solution: &mut [Point],
-    ) {
-        // start_vertex の位置はすでに確定しているものとする
-
-        let mut visited = vec![false; self.vertex_count];
-
-        // start_vertex を含む閉路を取ってくる
-        let mut cycle: Vec<Edge> = vec![];
-        self.find_loop(tecomp_id, start_vertex, &mut visited, &mut cycle);
-
-        // 
-        self.determine_positions_along_path();
-    }
-
-    fn determine_positions_along_path(
-        self, tecomp_id: usize, i: usize, path: &[Edge],
-        solution: &mut [Point],
-    ) {
-        // パスの最初の頂点および最後の頂点の位置は確定しているものとする
-
-        let src = path[i].v;
-        let dst = path[i].w;
-
-        if i == path.len() - 1 {
-            // 最後の辺は特別
-            if is_allowed_distance(
+        if determined[dst] {
+            // src も dst も確定している。
+            // この辺が invalid だったらバックトラックしないといけない。
+            let ok = is_allowed_distance(
                 &solution[src],
                 &solution[dst],
                 &self.original[src],
                 &self.original[dst],
                 self.epsilon,
                 false,
-            ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole) {
-                // OK。このパスを正しく配置できた。
-
-
+            ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
+            if ok {
+                return self.dfs(i + 1, order, solution, determined);
+            } else {
+                return false;
             }
         }
 
         // 頂点 dst の位置を決める
+        determined[dst] = true;
+
         let p0 = solution[src];
         let op0 = self.original[src];
         let op1 = self.original[dst];
@@ -199,14 +155,18 @@ impl Solver {
         for p1 in ring_points(&ring).iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
-                self.determine_positions_along_path(tecomp_id, i + 1, path, solution);
+                if self.dfs(i + 1, order, solution, determined) {
+                    determined[dst] = false;
+                    return true;
+                }
             }
         }
+
+        determined[dst] = false;
+        false
     }
-    */
 }
 
-/*
 fn each_point_in_hole(hole: &Polygon, mut f: impl FnMut(Point)) {
     let mut min_x: f64 = 1e20;
     let mut max_x: f64 = -1e20;
@@ -235,7 +195,6 @@ fn all_points_in_hole(hole: &Polygon) -> Vec<Point> {
     });
     return ps;
 }
-*/
 
 // 橋でグラフを分割する。(橋の集合, 各連結成分の頂点集合) が返される。
 // from http://www.prefield.com/algorithm/graph/bridge.html
