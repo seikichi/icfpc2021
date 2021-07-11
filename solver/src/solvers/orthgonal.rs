@@ -39,7 +39,7 @@ fn try_all_translations(
             if dislike >= best_dislike {
                 continue;
             }
-            if does_figure_fit_in_hole(&figure, hole) {
+            if does_figure_fit_in_hole(&figure, hole, false) {
                 best_vertices = Some(figure.vertices.clone());
                 best_dislike = dislike;
             }
@@ -55,7 +55,7 @@ fn try_all_translations_rotations_and_mirrors(
     let mut figure = original_figure.clone();
     let mut best_vertices = None;
     let mut best_dislike = 1e20;
-    if does_figure_fit_in_hole(&figure, hole) {
+    if does_figure_fit_in_hole(&figure, hole, false) {
         best_vertices = Some(figure.vertices.clone());
         best_dislike = calculate_dislike(&figure.vertices, &hole);
     }

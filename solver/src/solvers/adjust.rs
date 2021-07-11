@@ -1,6 +1,10 @@
 use crate::common::*;
 
-pub fn solve(input: &Input, solution: Vec<Point>) -> (Vec<Point>, f64) {
+pub fn solve(
+    input: &Input,
+    used_bonus_types: &Vec<BonusType>,
+    solution: Vec<Point>,
+) -> (Vec<Point>, f64) {
     let mut solution = solution;
     let hole_points: Vec<Point> = input.hole.exterior().points_iter().skip(1).collect();
     let n = solution.len();
@@ -17,13 +21,25 @@ pub fn solve(input: &Input, solution: Vec<Point>) -> (Vec<Point>, f64) {
     }
     let mut best_dislike = calculate_dislike(&solution, &input.hole);
     for i in 0..n {
-        if on_hole_vertex[i] { continue; }
+        if on_hole_vertex[i] {
+            continue;
+        }
         let temp = solution[i];
         for j in 0..m {
-            if satisfied[j] { continue; }
+            if satisfied[j] {
+                continue;
+            }
             solution[i] = hole_points[j];
             let dislike = calculate_dislike(&solution, &input.hole);
-            if does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) && dislike <= best_dislike {
+            if does_valid_pose(
+                &solution,
+                &input.figure,
+                &input.hole,
+                input.epsilon,
+                used_bonus_types,
+                None,
+            ) && dislike <= best_dislike
+            {
                 best_dislike = dislike;
                 satisfied[j] = true;
                 break;
