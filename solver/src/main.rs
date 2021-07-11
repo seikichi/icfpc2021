@@ -63,13 +63,20 @@ fn main() {
         };
 
         // adjust
-        let (solution5, dislike5) = solvers::adjust::solve(&input, solution4);
+        let (solution5, dislike5) = solvers::adjust::solve(&input, &used_bonus_types, solution4);
         eprintln!("adjust: dislike = {}", dislike5);
 
         // output
         let j = vertices_to_pose_json(&solution5, &used_bonus_types, &None);
         println!("{}", j);
-        if !common::does_valid_pose(&solution5, &input.figure, &input.hole, input.epsilon) {
+        if !common::does_valid_pose(
+            &solution5,
+            &input.figure,
+            &input.hole,
+            input.epsilon,
+            &used_bonus_types,
+            None,
+        ) {
             eprintln!("Pose is invalid");
             std::process::exit(1);
         }

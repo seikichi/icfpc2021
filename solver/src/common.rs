@@ -87,10 +87,44 @@ pub fn does_line_fit_in_hole(p1: &Point, p2: &Point, hole: &Polygon) -> bool {
     true
 }
 
-pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon) -> bool {
+pub fn calc_global_allowed_distance(vertices: &Vec<Point>, figure: &Figure) -> f64 {
+    let mut sum = 0.0;
+    for e in figure.edges.iter() {
+        let p1 = vertices[e.v];
+        let p2 = vertices[e.w];
+        let original_p1 = figure.vertices[e.v];
+        let original_p2 = figure.vertices[e.w];
+        let sd = squared_distance(&p1, &p2);
+        let original_sd = squared_distance(&original_p1, &original_p2);
+        sum += (1.0 - sd / original_sd).abs()
+    }
+    return sum;
+}
+pub fn does_global_allowed_distance(vertices: &Vec<Point>, figure: &Figure, epsilon: i64) -> bool {
+    let eps = 1e-7;
+    let sum = calc_global_allowed_distance(vertices, figure);
+    let ret = sum + eps < figure.edges.len() as f64 * epsilon as f64 / 1000000.0;
+    ret
+}
+
+pub fn does_figure_fit_in_hole(figure: &Figure, hole: &Polygon, wall_hack: bool) -> bool {
+    let mut wall_hack_point: Option<Point> = None;
+    if wall_hack {
+        for p in figure.vertices.iter() {
+            if !hole.contains(p) && !hole.exterior().contains(p) {
+                wall_hack_point = Some(*p);
+                break;
+            }
+        }
+    }
     for e in figure.edges.iter() {
         let p1 = figure.vertices[e.v];
         let p2 = figure.vertices[e.w];
+        if let Some(wp) = wall_hack_point {
+            if wp == p1 || wp == p2 {
+                continue;
+            }
+        }
         let line = Line::new(p1, p2);
         if !hole.contains(&line) {
             if !hole.exterior().contains(&line) {
@@ -106,21 +140,63 @@ pub fn does_valid_pose(
     figure: &Figure,
     hole: &Polygon,
     epsilon: i64,
+    used_bonus_types: &Vec<BonusType>,
+    break_leg: Option<Edge>,
 ) -> bool {
+    let use_globalist = used_bonus_types.iter().any(|b| *b == BonusType::Globalist);
+    let use_wall_hack = used_bonus_types.iter().any(|b| *b == BonusType::WallHack);
+    let use_break_leg = used_bonus_types.iter().any(|b| *b == BonusType::BreakALeg);
+    assert!(!(use_globalist && use_break_leg)); // 両方は同時に使えない
+    if use_break_leg {
+        assert!(break_leg.is_some());
+    } else {
+        assert!(break_leg.is_none());
+    }
+
+    if use_globalist {
+        if !does_global_allowed_distance(&vertices, &figure, epsilon) {
+            return false;
+        }
+    } else {
+        // Normal Edge
+        for e in figure.edges.iter() {
+            if let Some(break_leg_edge) = break_leg {
+                if *e == break_leg_edge {
+                    continue;
+                }
+            }
+            let p1 = vertices[e.v];
+            let p2 = vertices[e.w];
+            let original_p1 = figure.vertices[e.v];
+            let original_p2 = figure.vertices[e.w];
+            if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon, false) {
+                return false;
+            }
+        }
+
+        // Break Leg Edge
+        if let Some(break_leg_edge) = break_leg {
+            let k = figure.vertices.len();
+            let edges = [
+                Edge::new(break_leg_edge.v, k),
+                Edge::new(break_leg_edge.w, k),
+            ];
+            for e in edges.iter() {
+                let p1 = vertices[e.v];
+                let p2 = vertices[e.w];
+                let original_p1 = figure.vertices[e.v];
+                let original_p2 = figure.vertices[e.w];
+                if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon, true) {
+                    return false;
+                }
+            }
+        }
+    }
     let f = Figure {
         edges: figure.edges.clone(),
         vertices: vertices.clone(),
     };
-    for e in figure.edges.iter() {
-        let p1 = vertices[e.v];
-        let p2 = vertices[e.w];
-        let original_p1 = figure.vertices[e.v];
-        let original_p2 = figure.vertices[e.w];
-        if !is_allowed_distance(&p1, &p2, &original_p1, &original_p2, epsilon) {
-            return false;
-        }
-    }
-    return does_figure_fit_in_hole(&f, &hole);
+    return does_figure_fit_in_hole(&f, &hole, use_wall_hack);
 }
 
 #[test]
@@ -240,9 +316,13 @@ pub fn is_allowed_distance(
     original_p1: &Point,
     original_p2: &Point,
     epsilon: i64,
+    break_leg: bool,
 ) -> bool {
-    let sd = squared_distance(p1, p2);
+    let mut sd = squared_distance(p1, p2);
     let original_sd = squared_distance(original_p1, original_p2);
+    if break_leg {
+        sd *= 4.0;
+    }
     // |sd / original_sd - 1.0| <= epsilon / 1000000
     // -epsilon / 1,000,000 <= sd / original_sd - 1.0 <= epsilon / 1,000,000
     // 1.0 - eps / 1,000,000 <= sd / original_sd <= 1.0 + eps / 1,000,000
@@ -260,7 +340,14 @@ fn test_is_allowed_distance() {
     let p2 = Point::new(10.0, 10.0);
     let original_p1 = Point::new(0.0, 0.0);
     let original_p2 = Point::new(10.0, 0.0);
-    assert!(is_allowed_distance(&p1, &p2, &original_p1, &original_p2, 0));
+    assert!(is_allowed_distance(
+        &p1,
+        &p2,
+        &original_p1,
+        &original_p2,
+        0,
+        false
+    ));
 }
 
 pub fn pow2(x: f64) -> f64 {

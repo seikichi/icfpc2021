@@ -16,7 +16,7 @@ struct Solver {
     epsilon: i64,                  // readonly
     hole: Polygon,                 // readonly
     holl_points: Vec<Point>,       // readonly
-    // rng: SmallRng,                 // mutable
+                                   // rng: SmallRng,                 // mutable
 }
 
 pub fn solve(input: &Input, disable_dfs_centroid: bool) -> Option<(Vec<Point>, f64)> {
@@ -116,6 +116,7 @@ impl Solver {
                         &self.original_vertices[src],
                         &self.original_vertices[dst],
                         self.epsilon,
+                        false,
                     ) && does_line_fit_in_hole(&vertices[src], &vertices[dst], &self.hole))
             });
 
@@ -159,8 +160,8 @@ fn all_point_in_hole(hole: &Polygon, disable_dfs_centroid: bool) -> Vec<Point> {
         ps.push(p);
     });
     if !disable_dfs_centroid {
-      let c = hole.centroid().unwrap();
-      ps.sort_by_key(|p| squared_distance(p, &c) as i64);
+        let c = hole.centroid().unwrap();
+        ps.sort_by_key(|p| squared_distance(p, &c) as i64);
     }
     return ps;
 }
