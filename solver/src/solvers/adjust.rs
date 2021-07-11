@@ -31,8 +31,8 @@ pub fn solve(
             let temp = solution[j];
             solution[j] = hole_points[i];
             let next_solution = fix_allowed_distance_violation(j, &solution, &input);
+            solution[j] = temp;
             if next_solution.is_none() {
-                solution[j] = temp;
                 continue;
             }
             let next_solution = next_solution.unwrap();
