@@ -4,14 +4,20 @@ import * as dynamodb from "@aws-cdk/aws-dynamodb";
 // import * as events from "@aws-cdk/aws-events";
 // import * as targets from "@aws-cdk/aws-events-targets";
 
+import * as child_process from "child_process"
+
 export class AutomationStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // get commit Hash 
+    const commitHash = child_process.execSync("git rev-parse --short HEAD").toString()
 
     const fun = new lambda.DockerImageFunction(this, "Solver", {
       code: lambda.DockerImageCode.fromImageAsset("../solver"),
       timeout: cdk.Duration.minutes(15),
       memorySize: 512,
+      environment: { COMMIT: commitHash }
     });
 
     // DB

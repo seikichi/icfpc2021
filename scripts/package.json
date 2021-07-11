@@ -6,7 +6,8 @@
   "scripts": {
     "put-new-problems": "ts-node put_new_problems.ts",
     "put-existing-solutions": "ts-node put_existing_solutions.ts",
-    "submit": "ts-node submit.ts"
+    "submit": "ts-node submit.ts",
+    "execute-all": "ts-node execute_all.ts"
   },
   "author": "",
   "license": "ISC",
