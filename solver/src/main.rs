@@ -2,10 +2,18 @@ mod common;
 mod inout;
 mod solvers;
 
+use crate::common::*;
 use inout::*;
 use std::time::Duration;
 
 fn main() {
+    let used_bonus_types: Vec<BonusType> = {
+        if let Ok(ss) = std::env::var("USED_BONUS_TYPES") {
+            ss.split(",").map(|s| BonusType::from_str(&s)).collect()
+        } else {
+            vec![]
+        }
+    };
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
@@ -59,7 +67,7 @@ fn main() {
         eprintln!("adjust: dislike = {}", dislike5);
 
         // output
-        let j = vertices_to_pose_json(&solution5, &vec![], &vec![]);
+        let j = vertices_to_pose_json(&solution5, &used_bonus_types, &None);
         println!("{}", j);
         if !common::does_valid_pose(&solution5, &input.figure, &input.hole, input.epsilon) {
             eprintln!("Pose is invalid");

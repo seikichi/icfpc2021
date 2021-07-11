@@ -27,13 +27,15 @@ pub struct FigureJSON {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PoseJSON {
     pub vertices: Vec<Vec<i64>>,
-    pub bonuses: Vec<BonusOutJSON>
+    pub bonuses: Vec<BonusOutJSON>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BonusOutJSON {
     pub bonus: String,
     pub problem: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edge: Option<Vec<i64>>,
 }
 
 pub fn parse_input(data: &str) -> Input {
@@ -56,9 +58,11 @@ pub fn parse_input(data: &str) -> Input {
         .iter()
         .map(|p| Point::new(p[0] as f64, p[1] as f64))
         .collect();
-    let bonuses : Vec<Bonus> = input_json.bonuses.iter().map(|b|
-    Bonus {
-        position: Point::new(b.position[0] as f64, b.position[1] as f64),
+    let bonuses: Vec<Bonus> = input_json
+        .bonuses
+        .iter()
+        .map(|b| Bonus {
+            position: Point::new(b.position[0] as f64, b.position[1] as f64),
             bonus: b.bonus.clone(),
             problem: b.problem,
         })
@@ -90,21 +94,37 @@ pub fn read_input() -> Input {
 }
 
 #[allow(dead_code)]
-pub fn figure_to_pose_json(figure: &Figure, bonus_strs: &Vec<String>, bonus_problems: &Vec<i64>) -> String {
-    vertices_to_pose_json(&figure.vertices, bonus_strs, bonus_problems)
+pub fn figure_to_pose_json(
+    figure: &Figure,
+    using_bonus_types: &Vec<BonusType>,
+    break_leg: &Option<Edge>,
+) -> String {
+    vertices_to_pose_json(&figure.vertices, using_bonus_types, break_leg)
 }
 
-pub fn vertices_to_pose_json(vertices: &[Point], bonus_strs: &Vec<String>, bonus_problems: &Vec<i64>) -> String {
+pub fn vertices_to_pose_json(
+    vertices: &[Point],
+    using_bonus_types: &Vec<BonusType>,
+    break_leg: &Option<Edge>,
+) -> String {
     let vs: Vec<Vec<i64>> = vertices
         .iter()
         .map(|p| vec![p.x() as i64, p.y() as i64])
         .collect();
-    assert!(bonus_strs.len() == bonus_problems.len());
+    let bonus_strs: Vec<String> = using_bonus_types.iter().map(|b| b.to_string()).collect();
     let mut bonuses = vec![];
     for i in 0..bonus_strs.len() {
+        let mut edge = None;
+        if using_bonus_types[i] == BonusType::BreakALeg {
+            edge = Some(vec![
+                break_leg.unwrap().v as i64,
+                break_leg.unwrap().w as i64,
+            ]);
+        }
         bonuses.push(BonusOutJSON {
             bonus: bonus_strs[i].clone(),
-            problem: bonus_problems[i],
+            problem: -1,
+            edge: edge,
         });
     }
     let pose_json = PoseJSON {
