@@ -160,6 +160,11 @@ impl Solver {
 
         let mut candidates = ring_points(&ring);
 
+        let max_candidates1 = 20;
+        if candidates.len() > max_candidates1 {
+            candidates = candidates.iter().step_by(candidates.len() / max_candidates1).copied().collect();
+        }
+
         // candidates をよさげな順番に並べたい
         candidates.sort_by_key(|p1| {
             // すでに決まっているエッジの方向とはできるだけ違う方向に行きたい
@@ -174,6 +179,11 @@ impl Solver {
             }
             (sim * 100000.0) as i32
         });
+
+        let max_candidates2 = 5;
+        if candidates.len() > max_candidates2 {
+            candidates = candidates.iter().step_by(candidates.len() / max_candidates2).copied().collect();
+        }
 
         // TODO: ヒューリスティックを入れる
         for p1 in candidates.iter() {
