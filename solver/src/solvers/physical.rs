@@ -1,10 +1,10 @@
 use crate::common::*;
+use std::f64::consts::TAU;
 use geo::{Closest, Coordinate};
 use geo::prelude::*;
 use geo::contains::Contains;
 use std::time::{Duration, Instant};
 use rand::prelude::*;
-use rand::seq::SliceRandom;
 
 static SEED: [u8; 32] = [
     0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
@@ -19,7 +19,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
     let mut solution = input.figure.vertices.clone();
 
     let n = solution.len();
-    //let mut rng = SmallRng::from_seed(SEED);
+    let mut rng = SmallRng::from_seed(SEED);
 
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;
@@ -99,6 +99,14 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
                     let dir = (p1.0 - p0.0) / (dist + 1e-8);
                     force = force + dir * f;
                 }
+            }
+
+            // 4. ブラウン運動
+            {
+                let f = 2000.0 * (1.0 - progress); // この力の強さ
+                let theta = rng.gen::<f64>() * TAU;
+                let dir = vec2d(theta.cos(), theta.sin());
+                force = force + dir * f;
             }
 
             force = force * scale_factor;
