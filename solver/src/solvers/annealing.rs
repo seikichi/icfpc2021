@@ -124,26 +124,41 @@ fn make_next_candidates(
     let mut points = ring_points(&ring);
     points.shuffle(rng);
     for &p in points.iter() {
-        let ok1 = out_edges[i].iter().all(|&dst| {
-            is_allowed_distance(
-                &p,
-                &solution[dst],
-                &original_vertices[i],
-                &original_vertices[dst],
-                epsilon,
-                false,
-            )
-        });
-        if !ok1 {
-            continue;
-        }
-        let ok2 = out_edges[i]
-            .iter()
-            .all(|&dst| does_line_fit_in_hole(&p, &solution[dst], hole));
-        if !ok2 {
+        if !is_valid_point_move(i, &p, solution, original_vertices, out_edges, hole, epsilon) {
             continue;
         }
         return p;
     }
     unreachable!()
+}
+
+fn is_valid_point_move(
+    index: usize,
+    p: &Point,
+    solution: &[Point],
+    original_vertices: &[Point],
+    out_edges: &[Vec<usize>],
+    hole: &Polygon,
+    epsilon: i64,
+) -> bool {
+    let ok1 = out_edges[index].iter().all(|&dst| {
+        is_allowed_distance(
+            &p,
+            &solution[dst],
+            &original_vertices[index],
+            &original_vertices[dst],
+            epsilon,
+            false,
+        )
+    });
+    if !ok1 {
+        return false;
+    }
+    let ok2 = out_edges[index]
+        .iter()
+        .all(|&dst| does_line_fit_in_hole(&p, &solution[dst], hole));
+    if !ok2 {
+        return false;
+    }
+    return true;
 }
