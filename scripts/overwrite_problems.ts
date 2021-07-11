@@ -34,8 +34,6 @@ const TableName = 'Problems';
         const NumVertices = problem.figure.vertices.length;
         const NumHole = problem.hole.length;
 
-        console.log(`Put Problem ${id}`);
-
         const Item = {
             ProblemId: id,
             Problem: problem,
@@ -43,6 +41,22 @@ const TableName = 'Problems';
             NumVertices,
             NumHole
         };
+
+        try {
+            await client.delete({
+                TableName,
+                Key: {
+                    ProblemId: id
+                },
+                ConditionExpression: "attribute_exists(ProblemId)",
+            }).promise();
+            console.log(`Delete Done: ${id}`);
+        } catch (e) {
+            if (e.code !== "ConditionalCheckFailedException") {
+                throw e;
+            }
+            console.log(`Delete Skip ${id}`);
+        }
 
         try {
             await client.put({

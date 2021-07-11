@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "put-new-problems": "ts-node put_new_problems.ts",
+    "overwrite-problems": "ts-node overwrite_problems.ts",
     "put-existing-solutions": "ts-node put_existing_solutions.ts",
     "submit": "ts-node submit.ts",
     "execute-all": "ts-node execute_all.ts"
