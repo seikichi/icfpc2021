@@ -23,6 +23,7 @@ fn main() {
     };
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
+    let use_dfs2 = std::env::var("USE_DFS2").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
     let time_limit = {
         if let Ok(s) = std::env::var("TIME_LIMIT_SECONDS")
@@ -39,6 +40,11 @@ fn main() {
     eprintln!("time_limit = {:?}", time_limit);
 
     let input = read_input();
+
+    if use_dfs2 {
+        return solve_with_dfs2(&input, &used_bonus_types);
+    }
+
     let initial_solution = match initial_solver.as_str() {
         "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
         // "dfs2" => solve_with_dfs2(&input, &used_bonus_types),
