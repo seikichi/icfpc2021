@@ -17,11 +17,20 @@ export class AutomationStack extends cdk.Stack {
     // DB
     const STRING = dynamodb.AttributeType.STRING;
 
-    const table = new dynamodb.Table(this, "Problems", {
+    const problems = new dynamodb.Table(this, "Problems", {
       tableName: "Problems",
       partitionKey: { name: "ProblemId", type: STRING },
     });
 
-    table.grantReadWriteData(fun);
+    const solutions = new dynamodb.Table(this, "Solutions", {
+      tableName: "Solutions",
+      partitionKey: { name: "ProblemId", type: STRING },
+      sortKey: {
+        name: "Commit:Params", // xyz123:BAR=1&FOO=1
+        type: STRING,
+      }
+    });
+
+    problems.grantReadWriteData(fun); // TODO: Change to grantReadData
   }
 }
