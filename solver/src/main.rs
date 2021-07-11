@@ -16,7 +16,6 @@ fn main() {
     };
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
-    let use_physical = std::env::var("USE_PHYSICAL").is_ok();
     let use_dfs2 = std::env::var("USE_DFS2").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
     let time_limit = {
@@ -31,12 +30,8 @@ fn main() {
 
     let input = read_input();
 
-    if use_physical {
-        return solve_with_physical(&input, time_limit);
-    }
-
     if use_dfs2 {
-        return solve_with_dfs2(&input);
+        return solve_with_dfs2(&input, &used_bonus_types);
     }
 
     if let Some((solution1, dislike1)) = solvers::dfs::solve(&input, disable_dfs_centroid) {
@@ -97,31 +92,16 @@ fn main() {
     }
 }
 
-fn solve_with_physical(input: &Input, time_limit: Duration) {
-    let (solution, dislike) = solvers::physical::solve(&input, time_limit);
-    eprintln!("physical: dislike = {}", dislike);
-
-    // output
-    let j = vertices_to_pose_json(&solution, &vec![], &vec![]);
-    println!("{}", j);
-    
-    solvers::physical::check_solution_quality(&input, &solution);
-    if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
-        eprintln!("Pose is invalid");
-        std::process::exit(1);
-    }
-}
-
-fn solve_with_dfs2(input: &Input) {
+fn solve_with_dfs2(input: &Input, used_bonus_types: &Vec<BonusType>) {
     if let Some((solution, dislike)) = solvers::dfs2::solve(&input) {
         eprintln!("dfs2: dislike = {}", dislike);
 
         // output
-        let j = vertices_to_pose_json(&solution, &vec![], &vec![]);
+        let j = vertices_to_pose_json(&solution, &used_bonus_types, &None);
         println!("{}", j);
         
         solvers::physical::check_solution_quality(&input, &solution);
-        if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon) {
+        if !common::does_valid_pose(&solution, &input.figure, &input.hole, input.epsilon, used_bonus_types, None) {
             eprintln!("Pose is invalid");
             std::process::exit(1);
         }

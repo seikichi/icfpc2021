@@ -15,6 +15,7 @@ type Vector2d = Coordinate<f64>;
 
 fn vec2d(x: f64, y: f64) -> Vector2d { Vector2d { x, y } }
 
+#[allow(dead_code)]
 pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
     let mut solution = input.figure.vertices.clone();
 
@@ -142,7 +143,7 @@ pub fn check_solution_quality(input: &Input, solution: &[Point]) {
             let p1 = solution[neighbor];
             let op1 = original_vertices[neighbor];
 
-            if !is_allowed_distance(&p0, &p1, &op0, &op1, input.epsilon) {
+            if !is_allowed_distance(&p0, &p1, &op0, &op1, input.epsilon, false) {
                 let r = Ring::from_epsilon(Point::new(0.0, 0.0), input.epsilon, squared_distance(&op0, &op1));
                 eprintln!("Invalid distance: allowed={}..{}, solution={}", r.inner_radius, r.outer_radius, distance(&p0, &p1));
                 ok = false;
