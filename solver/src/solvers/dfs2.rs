@@ -1,8 +1,8 @@
 use crate::common::*;
-use std::collections::{HashSet, VecDeque};
 use geo::algorithm::contains::Contains;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
+use std::collections::{HashSet, VecDeque};
 
 type Vector2d = geo::Coordinate<f64>;
 
@@ -10,7 +10,6 @@ static SEED: [u8; 32] = [
     0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
 ];
-
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let n = input.figure.vertices.len();
@@ -79,15 +78,21 @@ impl Solver {
         let mut order: Vec<Edge> = vec![];
         let tecomp_id = self.vertex2tecomp[0];
         self.reorder_tecomps(
-            tecomp_id, 0,
-            &mut tecomp_visited, &mut used_edges,
-            &mut order);
+            tecomp_id,
+            0,
+            &mut tecomp_visited,
+            &mut used_edges,
+            &mut order,
+        );
         order
     }
 
     fn reorder_tecomps(
-        &self, tecomp_id: usize, start_vertex: usize,
-        tecomp_visited: &mut [bool], used_edges: &mut HashSet<Edge>,
+        &self,
+        tecomp_id: usize,
+        start_vertex: usize,
+        tecomp_visited: &mut [bool],
+        used_edges: &mut HashSet<Edge>,
         order: &mut Vec<Edge>,
     ) {
         tecomp_visited[tecomp_id] = true;
@@ -104,7 +109,9 @@ impl Solver {
     }
 
     fn reorder_single_tecomp(
-        &self, tecomp_id: usize, v: usize,
+        &self,
+        tecomp_id: usize,
+        v: usize,
         used_edges: &mut HashSet<Edge>,
         order: &mut Vec<Edge>,
     ) {
@@ -124,7 +131,7 @@ impl Solver {
     }
 
     fn search(&self, order: &[Edge]) -> Option<(Vec<Point>, f64)> {
-        let mut queue: Vec<State> = Vec::new();
+        let mut queue: Vec<Vec<State>> = vec![Vec::new(); self.edge_count + 1];
         let mut rng = SmallRng::from_seed(SEED);
         let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
 
@@ -142,7 +149,7 @@ impl Solver {
 
             let dislike = calculate_dislike_determined_only(&solution, &self.hole, &determined);
 
-            queue.push(State {
+            queue[0].push(State {
                 i: 0,
                 dislike,
                 solution: solution,
@@ -153,17 +160,25 @@ impl Solver {
         let mut best_solution = None;
         let mut best_dislike = 1e20;
 
-        while queue.len() > 0 {
-            let max_queue_size = 500;
-            queue.sort_by(|a, b| a.dislike.partial_cmp(&b.dislike).unwrap());
-            queue.truncate(max_queue_size);
-            queue.reverse();
+        let max_iteration = 1000;
+        for _iter in 0..max_iteration {
+            for i in 0..self.edge_count {
+                if queue[i].len() == 0 {
+                    continue;
+                }
+                queue[i].sort_by(|a, b| a.dislike.partial_cmp(&b.dislike).unwrap());
+                // queue[i].shuffle(&mut rng);
+                queue[i].truncate(max_iteration);
+                queue[i].reverse();
 
-            let state = queue.pop().unwrap();
-            if let Some((solution, dislike)) = self.generate_next_states(state, order, &mut queue) {
-                if dislike < best_dislike {
-                    best_solution = Some(solution);
-                    best_dislike = dislike;
+                let state = queue[i].pop().unwrap();
+                if let Some((solution, dislike)) =
+                    self.generate_next_states(state, order, &mut queue[i + 1])
+                {
+                    if dislike < best_dislike {
+                        best_solution = Some(solution);
+                        best_dislike = dislike;
+                    }
                 }
             }
         }
@@ -172,10 +187,17 @@ impl Solver {
     }
 
     fn generate_next_states(
-        &self, state: State, order: &[Edge],
+        &self,
+        state: State,
+        order: &[Edge],
         queue: &mut Vec<State>,
     ) -> Option<(Vec<Point>, f64)> {
-        let State { i, dislike, mut solution, mut determined } = state;
+        let State {
+            i,
+            dislike,
+            mut solution,
+            mut determined,
+        } = state;
 
         if i == self.edge_count {
             return Some((solution, dislike));
@@ -196,14 +218,12 @@ impl Solver {
                 false,
             ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
             if ok {
-                queue.push(
-                    State {
-                        i: i + 1,
-                        dislike,
-                        solution: solution,
-                        determined: determined,
-                    }
-                );
+                queue.push(State {
+                    i: i + 1,
+                    dislike,
+                    solution: solution,
+                    determined: determined,
+                });
                 return None;
             } else {
                 return None;
@@ -236,15 +256,20 @@ impl Solver {
         });
 
         // 間引く
-        let max_candidates = 4;
+        let max_candidates = 20;
         if candidates.len() > max_candidates {
-            candidates = candidates.iter().step_by(candidates.len() / max_candidates).copied().collect();
+            candidates = candidates
+                .iter()
+                .step_by(candidates.len() / max_candidates)
+                .copied()
+                .collect();
         }
 
         for p1 in candidates.iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
-                let new_dislike = calculate_dislike_determined_only(&solution, &self.hole, &determined);
+                let new_dislike =
+                    calculate_dislike_determined_only(&solution, &self.hole, &determined);
                 queue.push(State {
                     i: i + 1,
                     dislike: new_dislike,
@@ -258,7 +283,11 @@ impl Solver {
     }
 }
 
-fn calculate_dislike_determined_only(vertices: &[Point], hole: &Polygon, determined: &[bool]) -> f64 {
+fn calculate_dislike_determined_only(
+    vertices: &[Point],
+    hole: &Polygon,
+    determined: &[bool],
+) -> f64 {
     let mut s = 0.0;
     for h in hole.exterior().points_iter().skip(1) {
         s += vertices
@@ -318,12 +347,18 @@ fn all_points_in_hole(hole: &Polygon) -> Vec<Point> {
 // 橋でグラフを分割する。(橋の集合, 各連結成分の頂点集合) が返される。
 // from http://www.prefield.com/algorithm/graph/bridge.html
 fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usize>>) {
-
-    fn visit(out_edges: &[Vec<usize>], v: usize, u: usize,
-        brdg: &mut Vec<Edge>, tecomp: &mut Vec<Vec<usize>>,
-        roots: &mut Vec<usize>, s: &mut Vec<usize>, in_s: &mut Vec<bool>,
-        num: &mut Vec<usize>, time: &mut usize)
-    {
+    fn visit(
+        out_edges: &[Vec<usize>],
+        v: usize,
+        u: usize,
+        brdg: &mut Vec<Edge>,
+        tecomp: &mut Vec<Vec<usize>>,
+        roots: &mut Vec<usize>,
+        s: &mut Vec<usize>,
+        in_s: &mut Vec<bool>,
+        num: &mut Vec<usize>,
+        time: &mut usize,
+    ) {
         *time += 1;
         num[v] = *time;
 
@@ -352,7 +387,7 @@ fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usize>>
                 in_s[w] = false;
                 tecomp.last_mut().unwrap().push(w);
                 if v == w {
-                    break
+                    break;
                 }
             }
 
@@ -370,7 +405,18 @@ fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usize>>
     let mut tecomp: Vec<Vec<usize>> = vec![];
     for u in 0..n {
         if num[u] == 0 {
-            visit(out_edges, u, n, &mut brdg, &mut tecomp, &mut roots, &mut s, &mut in_s, &mut num, &mut time);
+            visit(
+                out_edges,
+                u,
+                n,
+                &mut brdg,
+                &mut tecomp,
+                &mut roots,
+                &mut s,
+                &mut in_s,
+                &mut num,
+                &mut time,
+            );
             brdg.pop();
         }
     }
@@ -388,7 +434,11 @@ fn make_vertex_to_tecomp_id(tecomp: &[Vec<usize>], n: usize) -> Vec<usize> {
     vertex2tecomp
 }
 
-fn make_tecomp_out_edges(bridges: &[Edge], tecomp: &[Vec<usize>], vertex2tecomp: &[usize]) -> Vec<Vec<(usize, Edge)>> {
+fn make_tecomp_out_edges(
+    bridges: &[Edge],
+    tecomp: &[Vec<usize>],
+    vertex2tecomp: &[usize],
+) -> Vec<Vec<(usize, Edge)>> {
     let mut out_edges = vec![vec![]; tecomp.len()];
     for bridge in bridges.iter() {
         let rev_bridge = Edge::new(bridge.w, bridge.v);
