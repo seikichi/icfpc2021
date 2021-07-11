@@ -59,12 +59,12 @@ exports.handler = async function (event, context) {
             "Commit:Params": commitAndParams,
             Dislikes: dislikes,
             Pose: solution,
-            UnlockBonuses: [],
+            UnlockBonuses: [], // TODO
         },
         ConditionExpression: "attribute_not_exists(ProblemId)",
     }
 
-    await client.put(paramsForUpdate).promise();
-    console.log(`Solution Put Done ${id}`);
+    await client.put(paramsForPut).promise();
+    console.log(`Solution Put Done ${ProblemId}`);
     return {}
 }
