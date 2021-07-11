@@ -62,9 +62,24 @@ fn try_all_translations(
     // eprintln!("hole bound box: {:?}", hole_bound_box);
     // eprintln!("figure bound box: {:?}", figure_bound_box);
     // eprintln!("lrub: {} {} {} {}", l, r, u, b);
+    let mut y_step = 1;
+    let mut x_step = 1;
+    if best_dislike >= 1e+20 {
+        y_step = std::cmp::max(1, (b - u) / 50);
+        x_step = std::cmp::max(1, (r - l) / 50);
+        // if y_step != 1 && x_step != 1 {
+        //     eprintln!("orthgonal step: {} {}", y_step, x_step);
+        // }
+    }
 
     for dy in l..=r {
+        if dy.abs() % y_step != 0 {
+            continue;
+        }
         for dx in u..=b {
+            if dx.abs() % x_step != 0 {
+                continue;
+            }
             translate(original_figure, dx as f64, dy as f64, &mut figure);
             let dislike = calculate_dislike(&figure.vertices, hole);
             if dislike >= best_dislike {
