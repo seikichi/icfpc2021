@@ -24,7 +24,11 @@ fn mirror_x_in_place(figure: &mut Figure) {
     }
 }
 
-fn try_all_translations(original_figure: &Figure, hole: &Polygon, best_dislike: f64) -> Option<(Vec<Point>, f64)> {
+fn try_all_translations(
+    original_figure: &Figure,
+    hole: &Polygon,
+    best_dislike: f64,
+) -> Option<(Vec<Point>, f64)> {
     let mut figure = original_figure.clone();
     let mut best_vertices = None;
     let mut best_dislike = best_dislike;
@@ -32,9 +36,11 @@ fn try_all_translations(original_figure: &Figure, hole: &Polygon, best_dislike: 
         for dx in -100..=100 {
             translate(original_figure, dx as f64, dy as f64, &mut figure);
             let dislike = calculate_dislike(&figure.vertices, hole);
-            if dislike >= best_dislike { continue; }
+            if dislike >= best_dislike {
+                continue;
+            }
             if does_figure_fit_in_hole(&figure, hole) {
-                best_vertices= Some(figure.vertices.clone());
+                best_vertices = Some(figure.vertices.clone());
                 best_dislike = dislike;
             }
         }
@@ -50,6 +56,7 @@ fn try_all_translations_rotations_and_mirrors(
     let mut best_vertices = None;
     let mut best_dislike = 1e20;
     if does_figure_fit_in_hole(&figure, hole) {
+        best_vertices = Some(figure.vertices.clone());
         best_dislike = calculate_dislike(&figure.vertices, &hole);
     }
     for _i in 0..2 {
