@@ -1,8 +1,16 @@
 use crate::common::*;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use geo::algorithm::contains::Contains;
+use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 type Vector2d = geo::Coordinate<f64>;
+
+static SEED: [u8; 32] = [
+    0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
+    0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
+];
+
 
 pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     let n = input.figure.vertices.len();
@@ -22,7 +30,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     //eprintln!("tecomp = {:?}", tecomp);
 
     let solver = Solver {
-        //vertex_count: out_edges.len(),
+        vertex_count: out_edges.len(),
         edge_count: input.figure.edges.len(),
         out_edges,
         //bridges,
@@ -38,24 +46,18 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     //eprintln!("reorder = {:?}", order);
     assert_eq!(order.len(), input.figure.edges.len());
 
-    let mut solution = input.figure.vertices.clone();
+    solver.search(&order)
+}
 
-    for pos in all_points_in_hole(&input.hole) {
-        let mut determined = vec![false; n];
-        let v = order[0].v;
-        solution[v] = pos;
-        determined[v] = true;
-        if solver.dfs(0, &order, &mut solution, &mut determined) {
-            let dislike = calculate_dislike(&solution, &input.hole);
-            return Some((solution, dislike));
-        }
-    }
-
-    None
+#[derive(Debug, Clone)]
+struct State {
+    i: usize,
+    solution: Vec<Point>,
+    determined: Vec<bool>,
 }
 
 struct Solver {
-    //vertex_count: usize,
+    vertex_count: usize,
     edge_count: usize,
     out_edges: Vec<Vec<usize>>,
     //bridges: Vec<Edge>,
@@ -120,13 +122,55 @@ impl Solver {
         }
     }
 
-    fn dfs(
-        &self, i: usize,
-        order: &[Edge],
-        solution: &mut [Point], determined: &mut [bool],
-    ) -> bool {
+    fn search(&self, order: &[Edge]) -> Option<(Vec<Point>, f64)> {
+        let mut queue: VecDeque<State> = VecDeque::new();
+        let mut rng = SmallRng::from_seed(SEED);
+        let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
+
+        let mut hole_points = all_points_in_hole(&self.hole);
+        hole_points.shuffle(&mut rng);
+        candidates.extend(hole_points.iter().take(20));
+
+        for &pos in candidates.iter() {
+            let mut solution = self.original.clone();
+            let mut determined = vec![false; self.vertex_count];
+            let v = order[0].v;
+
+            solution[v] = pos;
+            determined[v] = true;
+
+            queue.push_back(State {
+                i: 0,
+                solution: solution,
+                determined: determined,
+            });
+        }
+
+        let mut best_solution = None;
+        let mut best_dislike = 1e20;
+
+        while queue.len() > 0 {
+            let state = queue.pop_front().unwrap();
+            if let Some((solution, dislike)) = self.generate_next_states(state, order, &mut queue) {
+                if dislike < best_dislike {
+                    best_solution = Some(solution);
+                    best_dislike = dislike;
+                }
+            }
+        }
+
+        best_solution.map(|s| (s, best_dislike))
+    }
+
+    fn generate_next_states(
+        &self, state: State, order: &[Edge],
+        queue: &mut VecDeque<State>,
+    ) -> Option<(Vec<Point>, f64)> {
+        let State { i, mut solution, mut determined } = state;
+
         if i == self.edge_count {
-            return true;
+            let dislike = calculate_dislike(&solution, &self.hole);
+            return Some((solution, dislike));
         }
 
         let src = order[i].v;
@@ -144,9 +188,16 @@ impl Solver {
                 false,
             ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
             if ok {
-                return self.dfs(i + 1, order, solution, determined);
+                queue.push_back(
+                    State {
+                        i: i + 1,
+                        solution: solution,
+                        determined: determined,
+                    }
+                );
+                return None;
             } else {
-                return false;
+                return None;
             }
         }
 
@@ -185,15 +236,15 @@ impl Solver {
         for p1 in candidates.iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
-                if self.dfs(i + 1, order, solution, determined) {
-                    determined[dst] = false;
-                    return true;
-                }
+                queue.push_back(State {
+                    i: i + 1,
+                    solution: solution.clone(),
+                    determined: determined.clone(),
+                });
             }
         }
 
-        determined[dst] = false;
-        false
+        None
     }
 }
 
