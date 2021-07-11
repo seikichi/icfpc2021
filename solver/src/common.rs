@@ -569,24 +569,37 @@ pub fn fix_allowed_distance_violation(
                 if !determined[to] {
                     continue;
                 }
-                let distance_ratio = calc_distance_ratio(
+                let d1 = calc_distance_ratio(
                     &solution[to],
                     &p,
                     &input.figure.vertices[to],
                     &input.figure.vertices[from],
                 );
-                if distance_ratio.abs() + 1e-6 <= input.epsilon as f64 / 1000000.0 {
+                if d1.abs() + 1e-6 <= input.epsilon as f64 / 1000000.0 {
                     continue;
                 }
-                // distance_ratioが条件を満たしてない場合は満たすように移動させる
+                // 距離が条件を満たしてない場合は満たすように移動させる
+                let distance_ratio = squared_distance(&solution[to], &p).sqrt()
+                    / squared_distance(&input.figure.vertices[to], &input.figure.vertices[from])
+                        .sqrt()
+                    - 1.0;
                 let vect = (solution[to] - solution[from])
-                    * (distance_ratio - input.epsilon as f64 / 1000000.0);
+                    * distance_ratio
+                    * (input.epsilon as f64 / 1000000.0).sqrt();
+                // eprintln!(
+                //     "{} {} {} {:?}",
+                //     squared_distance(&solution[to], &p).sqrt(),
+                //     squared_distance(&input.figure.vertices[to], &input.figure.vertices[from])
+                //         .sqrt(),
+                //     distance_ratio,
+                //     vect
+                // );
                 p = p + vect;
             }
         }
         let mut ok = false;
         // マンハッタン距離r以内の全点を試す
-        'outer_loop: for r in 0i64..3i64 {
+        'outer_loop: for r in 0i64..5i64 {
             for dx in -r..=r {
                 let mut dys = vec![r - dx.abs(), -r + dx.abs()];
                 dys.dedup();
@@ -605,6 +618,9 @@ pub fn fix_allowed_distance_violation(
                         input.epsilon,
                         &determined,
                     ) {
+                        // if dx != 0 || dy != 0 {
+                        //     eprintln!("move: {} {:?}", from, candidate_p - solution[from]);
+                        // }
                         solution[from] = candidate_p;
                         ok = true;
                         break 'outer_loop;
