@@ -1,9 +1,4 @@
-import fs from 'fs'
-import path from "path";
-import { useRef, createRef, useEffect, RefObject } from "react";
-import Link from 'next/link'
-import { Button, ButtonGroup } from '@material-ui/core'
-
+import { useState, useRef, createRef, useEffect, RefObject, Fragment } from "react";
 import { makeStyles } from '@material-ui/core/styles';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -12,6 +7,12 @@ import TableContainer from '@material-ui/core/TableContainer';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
+import Collapse from '@material-ui/core/Collapse';
+import IconButton from '@material-ui/core/IconButton';
+import Box from '@material-ui/core/Box';
+import Typography from '@material-ui/core/Typography';
+import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp';
 
 import AWS from "aws-sdk"
 
@@ -24,10 +25,26 @@ interface Problem {
     edges: [number, number][];
   };
   epsilon: number;
+  [bonuses: number]: {
+    position: Point,
+    bonus: string,
+    problem: number,
+  }
+}
+
+interface Pose {
+  [bonuses: number]: {
+    bonus: string,
+    problem: number,
+  },
+  vertices: Point[];
 }
 
 interface Solution {
-  vertices: Point[];
+  ProblemId: string,
+  "Commit:Params": string,
+  Dislikes: number,
+  Pose: Pose,
 }
 
 const useStyles = makeStyles({
@@ -44,25 +61,54 @@ interface TableRowData {
   id: number;
   dislike: number;
   minimalDislike: number;
+  commitHash: string;
+  params: string;
   score: number;
   problem: Problem;
   solution: Solution | null;
+  allSolutions: Solution[];
 }
 
 export async function getStaticProps() {
   AWS.config.update({ region: 'ap-northeast-1' })
   const docClient = new AWS.DynamoDB.DocumentClient()
   const TableName = "Problems"
-  const problems = await docClient.scan({ TableName }).promise()
+  const SolutionsTableName = 'Solutions'
 
-  const rows = problems.Items?.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
+  let solutions: any[] = []
+  let SolutionsExclusiveStartKey = undefined
+  do {
+    const solutionRespose: any = await docClient.scan({
+      TableName: SolutionsTableName,
+      ExclusiveStartKey: SolutionsExclusiveStartKey,
+    }).promise()
+    solutions = solutions.concat(solutionRespose.Items)
+    SolutionsExclusiveStartKey = solutionRespose.LastEvaluatedKey
+  } while (SolutionsExclusiveStartKey)
+
+  let ExclusiveStartKey = undefined
+  let problems: any[] = []
+  do {
+    const response = await docClient.scan({ TableName }).promise()
+    problems = problems.concat(response.Items)
+    ExclusiveStartKey = response.LastEvaluatedKey
+  } while (ExclusiveStartKey)
+
+  const rows = problems.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
+    const filtered = solutions.filter(s => s.ProblemId === item.ProblemId)
+    filtered.sort((a, b) => a.Dislikes - b.Dislikes)
+    // console.log(`${item.ProblemId}: ${JSON.stringify(filtered)}`)
+    const solution = filtered[0]
     return {
-      id: item.ProblemId,
-      dislike: typeof(item.Dislikes) === "number" ? item.Dislikes : -1,
+      id: parseInt(item.ProblemId),
+      dislike: solution ? solution.Dislikes : -1,
       problem: item.Problem as Problem,
-      solution: item.Solution ? item.Solution as Solution : null,
+      commitHash: solution ? solution["Commit\:Params"].split(":")[0] : "",
+      params: solution ? solution["Commit\:Params"].split(":")[1] : "",
+      solution: solution || null,
       minimalDislike: 0,
       score: 0,
+      allSolutions: filtered
     }
   })
 
@@ -126,7 +172,7 @@ export default function Home({ rows }: Props) {
 
       if (solution) {
         ctx.beginPath()
-        vertices = solution.vertices
+        vertices = solution.Pose.vertices
         for (let i = 0; i < problem.figure.edges.length; i++) {
           const [edgeFrom, edgeTo] = problem.figure.edges[i]
           ctx.moveTo(vertices[edgeFrom][0], vertices[edgeFrom][1])
@@ -141,10 +187,13 @@ export default function Home({ rows }: Props) {
   return (
     <>
       <TableContainer component={Paper}>
-        <Table className={classes.table} aria-label="simple table">
+        <Table stickyHeader className={classes.table} aria-label="simple table">
           <TableHead>
             <TableRow>
+              <TableCell />
               <TableCell>Problem</TableCell>
+              <TableCell>CommitHash</TableCell>
+              <TableCell>Params</TableCell>
               <TableCell align="right">Dislike</TableCell>
               <TableCell align="right">Miminal Dislike</TableCell>
               <TableCell align="right">Score</TableCell>
@@ -153,21 +202,65 @@ export default function Home({ rows }: Props) {
           </TableHead>
           <TableBody>
             {rows.map((row, i) => (
-              <TableRow key={row.id}>
-                <TableCell component="th" scope="row">
-                  {row.id}
-                </TableCell>
-                <TableCell align="right">{row.dislike}</TableCell>
-                <TableCell align="right">{row.minimalDislike}</TableCell>
-                <TableCell align="right">{row.score}</TableCell>
-                <TableCell>
-                  <canvas ref={canvasRefs.current[i]} width={150} height={150}></canvas>
-                </TableCell>
-              </TableRow>
+              <Row key={row.id} row={row} canvasRef={canvasRefs.current[i]} />
             ))}
           </TableBody>
         </Table>
       </TableContainer>
     </>
   )
+}
+
+function Row(props: { row: any, canvasRef: any }) {
+  const { row, canvasRef } = props;
+  const [open, setOpen] = useState(false);
+  return (
+    <Fragment>
+      <TableRow key={row.id}>
+        <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
+          {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+        </IconButton>
+        <TableCell component="th" scope="row">
+          {row.id}
+        </TableCell>
+        <TableCell>{row.commitHash}</TableCell>
+        <TableCell>{row.params}</TableCell>
+        <TableCell align="right">{row.dislike}</TableCell>
+        <TableCell align="right">{row.minimalDislike}</TableCell>
+        <TableCell align="right">{row.score}</TableCell>
+        <TableCell>
+          <canvas ref={canvasRef} width={150} height={150}></canvas>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box margin={1}>
+              <Typography variant="h6" gutterBottom component="div">
+                All Solutions
+              </Typography>
+              <Table stickyHeader aria-label="simple table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>CommitHash</TableCell>
+                    <TableCell>Params</TableCell>
+                    <TableCell align="right">Dislike</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {row.allSolutions.map((r: Solution, i: any) => (
+                    <TableRow key={r['Commit:Params']}>
+                      <TableCell>{r['Commit:Params'].split(":")[0]}</TableCell>
+                      <TableCell>{r['Commit:Params'].split(":")[1]}</TableCell>
+                      <TableCell align="right">{r.Dislikes}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </Fragment>
+  );
 }
