@@ -29,10 +29,10 @@ RUN pip3 install pyscipopt shapely
 
 ####################
 WORKDIR ${FUNCTION_DIR}
-COPY new_solver.py ${FUNCTION_DIR}
-COPY 12.problem ${FUNCTION_DIR}
-COPY index.js ${FUNCTION_DIR}
 RUN npm install aws-sdk
+
+COPY new_solver.py ${FUNCTION_DIR}
+COPY index.js ${FUNCTION_DIR}
 ####################
 
 ENTRYPOINT ["/entry_script.sh"]

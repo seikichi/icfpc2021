@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from pyscipopt import Model
 from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon, LineString
+from shapely.geometry.polygon import Polygon, LineString, LinearRing
 
 
 def distance(x1, y1, x2, y2):
@@ -15,11 +15,6 @@ def distance(x1, y1, x2, y2):
 
 
 problem = json.load(sys.stdin)
-
-hole_poly = Polygon(problem['hole'])
-
-xmin, ymin, xmax, ymax = map(int, hole_poly.bounds)
-print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}", file=sys.stderr)
 
 hole = problem['hole']
 epsilon = problem['epsilon']
@@ -29,6 +24,37 @@ edges = problem['figure']['edges']
 print(f"# of vertices = {len(vertices)}", file=sys.stderr)
 print(f"# of edges = {len(edges)}", file=sys.stderr)
 print(f"# of hole = {len(hole)}", file=sys.stderr)
+
+
+def find_largest_sub_convex_hole(hole):
+    max_size = -1
+    result = None
+    for start in range(len(hole)):
+        prev = hole[start]
+        curr = hole[(start + 1) % len(hole)]
+        points = [prev, curr]
+
+        for i in range(2, len(hole)):
+            n = hole[(start + i) % len(hole)]
+            ring = LinearRing([prev, curr, n])
+            if not ring.is_ccw:
+                continue
+            prev, curr = curr, n
+            points.append(n)
+
+        size = Polygon(points).area
+        if max_size < size:
+            max_size = size
+            result = points
+
+    return result
+
+convex_hole = find_largest_sub_convex_hole(hole)
+convex_hole_poly = Polygon(convex_hole)
+
+xmin, ymin, xmax, ymax = map(int, convex_hole_poly.bounds)
+print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}", file=sys.stderr)
+print(f"convex hole = ${convex_hole}", file=sys.stderr)
 
 points_by_distances = {}
 
@@ -113,9 +139,9 @@ for i, (vi, wi) in enumerate(edges):
     )
 
 for j in range(len(vertices)):
-    for i in range(len(hole)):
-        h1 = hole[i]
-        h2 = hole[(i + 1) % len(hole)]
+    for i in range(len(convex_hole)):
+        h1 = convex_hole[i]
+        h2 = convex_hole[(i + 1) % len(convex_hole)]
         vx, vy = h1
         wx, wy = h2
 
@@ -126,32 +152,32 @@ for j in range(len(vertices)):
         model.addCons(cx * (pvy[j] - vy) - cy * (pvx[j] - vx) >= 0)
 
 sign = []
-for i in range(len(hole)):
+for i in range(len(convex_hole)):
     sign.append([])
     for j in range(len(vertices)):
         sign[-1].append(model.addVar(vtype="B"))
 
-for i in range(len(hole)):
+for i in range(len(convex_hole)):
     model.addCons(sum(sign[i][j] for j in range(len(vertices))) == 1)
 
 MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
 hdlx = []
 hdly = []
-for i in range(len(hole)):
+for i in range(len(convex_hole)):
     hdlx.append([])
     hdly.append([])
     for j in range(MAX_D):
         hdlx[-1].append(model.addVar(vtype="B"))
         hdly[-1].append(model.addVar(vtype="B"))
 
-for i in range(len(hole)):
+for i in range(len(convex_hole)):
     model.addCons(sum(hdlx[i][j] for j in range(MAX_D)) == 1)
     model.addCons(sum(hdly[i][j] for j in range(MAX_D)) == 1)
 
 M = 1000000
 
-for i in range(len(hole)):
-    hx, hy = hole[i]
+for i in range(len(convex_hole)):
+    hx, hy = convex_hole[i]
     for k in range(len(vertices)):
         model.addCons(
             pvx[k] - hx <= sum(j * hdlx[i][j]
@@ -174,7 +200,7 @@ for i in range(len(hole)):
 model.setObjective(
     sum(
         j * j * hdlx[i][j] + j * j * hdly[i][j]
-        for i in range(len(hole))
+        for i in range(len(convex_hole))
         for j in range(MAX_D)
     ),
     "minimize"
