@@ -31,7 +31,6 @@ fn main() {
     let fix_seed = std::env::var("FIX_SEED").is_ok();
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
-    let use_dfs2 = std::env::var("USE_DFS2").is_ok();
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
     let time_limit = {
         if let Ok(s) = std::env::var("TIME_LIMIT_SECONDS")
@@ -47,10 +46,6 @@ fn main() {
     eprintln!("time_limit = {:?}", time_limit);
 
     let input = read_input();
-
-    if use_dfs2 {
-        return solve_with_dfs2(&input, time_limit, &used_bonus_types);
-    }
 
     let initial = if initial_solution.is_none() {
         eprintln!("initial_solver = {}", initial_solver);
@@ -130,30 +125,6 @@ fn main() {
         }
     } else {
         eprintln!("No solutions");
-        std::process::exit(1);
-    }
-}
-
-fn solve_with_dfs2(input: &Input, time_limit: Duration, used_bonus_types: &Vec<BonusType>) {
-    if let Some((solution, dislike)) = solvers::dfs2::solve(&input, time_limit) {
-        eprintln!("dfs2: dislike = {}", dislike);
-
-        // output
-        let j = vertices_to_pose_json(&solution, &used_bonus_types, &None);
-        println!("{}", j);
-        if !common::does_valid_pose(
-            &solution,
-            &input.figure,
-            &input.hole,
-            input.epsilon,
-            used_bonus_types,
-            None,
-        ) {
-            eprintln!("Pose is invalid");
-            std::process::exit(1);
-        }
-    } else {
-        eprintln!("No solutions!!");
         std::process::exit(1);
     }
 }
