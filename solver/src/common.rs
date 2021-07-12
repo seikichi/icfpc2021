@@ -798,6 +798,7 @@ pub fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usi
 
 // s と t の最小カットを求める。
 // カットの片側に含まれる頂点集合(bool)と、カットの用いる辺の集合を返す。
+#[allow(dead_code)]
 pub fn minimum_cut(out_edges: &[Vec<usize>], s: usize, t: usize) -> (Vec<bool>, Vec<Edge>) {
     let n = out_edges.len();
     let mut flow = vec![vec![0; n]; n];
@@ -865,6 +866,7 @@ fn test_minimum_cut() {
 }
 
 // from http://www.prefield.com/algorithm/graph/dinic.html
+#[allow(dead_code)]
 pub fn maximum_flow(
     out_edges: &[Vec<usize>], s: usize, t: usize,
     capacity: &mut [Vec<i32>], flow: &mut [Vec<i32>],
