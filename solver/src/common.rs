@@ -81,6 +81,35 @@ pub fn calculate_dislike(vertices: &[Point], hole: &Polygon) -> f64 {
     s
 }
 
+pub fn calc_bound_box(ps: &Vec<Point>) -> (Point, Point) {
+    let mut ret = (Point::new(1e+9, 1e+9), Point::new(-1e+9, -1e+9));
+    for &p in ps.iter() {
+        if p.x() < ret.0.x() {
+            ret.0.set_x(p.x());
+        }
+        if p.y() < ret.0.y() {
+            ret.0.set_y(p.y());
+        }
+        if ret.1.x() < p.x() {
+            ret.1.set_x(p.x());
+        }
+        if ret.1.y() < p.y() {
+            ret.1.set_y(p.y());
+        }
+    }
+    return ret;
+}
+
+#[allow(dead_code)]
+pub fn does_point_fit_in_hole(p: &Point, hole: &Polygon) -> bool {
+    if !hole.contains(p) {
+        if !hole.exterior().contains(p) {
+            return false;
+        }
+    }
+    return true;
+}
+
 pub fn does_line_fit_in_hole(p1: &Point, p2: &Point, hole: &Polygon) -> bool {
     let line = Line::new(*p1, *p2);
     if !hole.contains(&line) {

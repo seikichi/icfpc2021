@@ -24,25 +24,6 @@ fn mirror_x_in_place(figure: &mut Figure) {
     }
 }
 
-fn calc_bound_box(ps: &Vec<Point>) -> (Point, Point) {
-    let mut ret = (Point::new(1e+9, 1e+9), Point::new(-1e+9, -1e+9));
-    for &p in ps.iter() {
-        if p.x() < ret.0.x() {
-            ret.0.set_x(p.x());
-        }
-        if p.y() < ret.0.y() {
-            ret.0.set_y(p.y());
-        }
-        if ret.1.x() < p.x() {
-            ret.1.set_x(p.x());
-        }
-        if ret.1.y() < p.y() {
-            ret.1.set_y(p.y());
-        }
-    }
-    return ret;
-}
-
 fn try_all_translations(
     original_figure: &Figure,
     hole: &Polygon,
