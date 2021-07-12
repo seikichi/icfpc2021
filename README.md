@@ -1,4 +1,4 @@
-# ハイライト 百万遍店 (Highlight Hyakumanben-ten)
+# グレースたなか (Grace Tanaka)
 
 - @cos65535
 - @nojima
