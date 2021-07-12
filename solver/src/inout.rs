@@ -27,7 +27,8 @@ pub struct FigureJSON {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PoseJSON {
     pub vertices: Vec<Vec<i64>>,
-    pub bonuses: Vec<BonusOutJSON>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bonuses: Option<Vec<BonusOutJSON>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,6 +75,18 @@ pub fn parse_input(data: &str) -> Input {
         epsilon: input_json.epsilon,
         bonuses: bonuses,
     }
+}
+
+pub fn parse_pose_json(data: &str) -> Vec<Point> {
+    let pose_json: PoseJSON = serde_json::from_str(&data).expect("failed to parse input as JSON");
+
+    let vertices: Vec<Point> = pose_json
+        .vertices
+        .iter()
+        .map(|p| Point::new(p[0] as f64, p[1] as f64))
+        .collect();
+
+    vertices
 }
 
 #[allow(dead_code)]
@@ -129,7 +142,7 @@ pub fn vertices_to_pose_json(
     }
     let pose_json = PoseJSON {
         vertices: vs,
-        bonuses: bonuses,
+        bonuses: Some(bonuses),
     };
     serde_json::to_string(&pose_json).unwrap()
 }

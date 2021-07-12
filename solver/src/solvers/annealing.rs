@@ -57,13 +57,14 @@ pub fn solve(
     let mut temperature = initial_temperature;
 
     let mut iter = 0;
+    let mut move_count = 0;
     loop {
         // check time limit
         iter += 1;
         if iter % 100 == 0 {
             let elapsed = Instant::now() - start_at;
             if best_score == 0.0 || elapsed >= time_limit {
-                eprintln!("iter = {}", iter);
+                eprintln!("iter = {}, move_count = {}", iter, move_count);
                 let dislike = calculate_dislike(&best_solution, &input.hole);
                 return (best_solution, dislike);
             }
@@ -84,6 +85,9 @@ pub fn solve(
             &out_edges,
             &mut rng,
         );
+        if candidate != original_vertices[i] {
+            move_count += 1;
+        }
 
         // calculate score. FIXME: slow
         let old = solution[i];
@@ -151,7 +155,6 @@ fn make_next_candidates(
                 (theta.sin() * d + 0.5).floor(),
             );
             let p = solution[some_neighbor] + vect;
-            //for &p in points.iter() {
             if !is_valid_point_move(i, &p, solution, original_vertices, out_edges, hole, epsilon) {
                 continue;
             }
