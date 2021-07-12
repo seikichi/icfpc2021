@@ -56,7 +56,7 @@ fn main() {
         eprintln!("initial_solver = {}", initial_solver);
         match initial_solver.as_str() {
             "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
-            // "dfs2" => solve_with_dfs2(&input, &used_bonus_types),
+            "dfs2" => solvers::dfs2::solve(&input),
             "shrink" => solvers::shrink::solve(&input, fix_seed),
             _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
         }
@@ -141,7 +141,6 @@ fn solve_with_dfs2(input: &Input, used_bonus_types: &Vec<BonusType>) {
         // output
         let j = vertices_to_pose_json(&solution, &used_bonus_types, &None);
         println!("{}", j);
-        //solvers::physical::check_solution_quality(&input, &solution);
         if !common::does_valid_pose(
             &solution,
             &input.figure,
