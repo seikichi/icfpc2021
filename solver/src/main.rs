@@ -48,6 +48,13 @@ fn main() {
             Duration::from_millis(2000)
         }
     };
+    let initial_temperature = {
+        if let Ok(s) = std::env::var("INITIAL_TEMPERATURE") {
+            s.parse::<f64>().expect("Invalid INITIAL_TEMPERATURE")
+        } else {
+            10000.0
+        }
+    };
 
     eprintln!("time_limit = {:?}", time_limit);
 
@@ -93,7 +100,7 @@ fn main() {
 
         eprintln!("annealing_solver = {}", annealing_solver);
         let (solution3, dislike3) = match annealing_solver.as_str() {
-            "annealing" => solvers::annealing::solve(&input, solution2, time_limit, fix_seed),
+            "annealing" => solvers::annealing::solve(&input, solution2, time_limit, fix_seed, initial_temperature),
             "annealing3" => solvers::annealing3::solve(&input, solution2, time_limit, fix_seed),
             "hill_climbing" => {
                 solvers::hill_climbing::solve(&input, solution2, time_limit, fix_seed)
