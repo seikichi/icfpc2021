@@ -41,6 +41,9 @@ pub fn solve(input: &Input, time_limit: Duration) -> Option<(Vec<Point>, f64)> {
         epsilon: input.epsilon,
         original: input.figure.vertices.clone(),
         hole: input.hole.clone(),
+        boundary_terminals: HashSet::from_iter(input.hole.exterior().points_iter().map(|p| (p.x() as i64, p.y() as i64))),
+        time_limit: time_limit,
+        start_at: Instant::now(),
     };
 
     let order = solver.reorder();
@@ -51,7 +54,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> Option<(Vec<Point>, f64)> {
 
     eprintln!("possible_ranges = {:?}", possible_ranges);
 
-    solver.search(&order, &possible_ranges, time_limit)
+    solver.search(&order, &possible_ranges)
 }
 
 /*
@@ -82,6 +85,9 @@ struct Solver {
     epsilon: i64,
     original: Vec<Point>,
     hole: Polygon,
+    boundary_terminals: HashSet<(i64, i64)>,
+    time_limit: Duration,
+    start_at: Instant,
 }
 
 impl Solver {
@@ -198,7 +204,7 @@ impl Solver {
     }
 
     fn search(
-        &self, order: &[Edge], possible_ranges: &[PossibleRange], time_limit: Duration,
+        &self, order: &[Edge], possible_ranges: &[PossibleRange]
     ) -> Option<(Vec<Point>, f64)> {
         let mut rng = SmallRng::from_seed(SEED);
         let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
@@ -209,8 +215,6 @@ impl Solver {
 
         let mut best_solution = None;
         let mut best_dislike = 1e20;
-
-        let start_at = Instant::now();
 
         for &pos in candidates.iter() {
             let mut solution = self.original.clone();
@@ -232,7 +236,7 @@ impl Solver {
             }
 
             // タイムリミットを超えていたらすぐに終了する
-            if Instant::now() - start_at >= time_limit {
+            if Instant::now() - self.start_at >= self.time_limit {
                 eprintln!("time limit exceeded. return early.");
                 return best_solution.map(|s| (s, best_dislike));
             }
@@ -256,10 +260,17 @@ impl Solver {
             return Some((solution.clone(), dislike));
         }
 
+        // タイムリミット
+        if *n_iter % 10000 == 0 {
+            let elapsed = Instant::now() - self.start_at;
+            if elapsed >= self.time_limit {
+                return None;
+            }
+        }
+        *n_iter += 1;
         // iteration の回数が多すぎるときは、初期点を選び方を変えたほうが良さそうなので
         // 探索を打ち切る
-        *n_iter += 1;
-        if *n_iter > 10000000 {
+        if *n_iter > 1000000 {
             return None;
         }
 
@@ -310,6 +321,11 @@ impl Solver {
 
         // candidates をよさげな順番に並べたい
         candidates.sort_by_key(|p1| {
+            // 端点が候補にあるならそれを優先的に選びたい
+            if self.boundary_terminals.contains(&(p1.x() as i64, p1.y() as i64)) {
+                return -100000000;
+            }
+
             // すでに決まっているエッジの方向とはできるだけ違う方向に行きたい
             let v1 = p1.0 - p0.0;
             let mut sim = 0.0;
