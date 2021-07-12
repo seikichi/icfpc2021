@@ -2,6 +2,7 @@ pub type Point = geo::Point<f64>;
 pub type Polygon = geo::Polygon<f64>;
 pub type Line = geo::Line<f64>;
 use geo::algorithm::contains::Contains;
+use std::collections::VecDeque;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Edge {
@@ -713,4 +714,239 @@ fn is_allowed_distance_point_move(
         return false;
     }
     return true;
+}
+
+// 橋でグラフを分割する。(橋の集合, 各連結成分の頂点集合) が返される。
+// from http://www.prefield.com/algorithm/graph/bridge.html
+pub fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usize>>) {
+    fn visit(
+        out_edges: &[Vec<usize>],
+        v: usize,
+        u: usize,
+        brdg: &mut Vec<Edge>,
+        tecomp: &mut Vec<Vec<usize>>,
+        roots: &mut Vec<usize>,
+        s: &mut Vec<usize>,
+        in_s: &mut Vec<bool>,
+        num: &mut Vec<usize>,
+        time: &mut usize,
+    ) {
+        *time += 1;
+        num[v] = *time;
+
+        s.push(v);
+        in_s[v] = true;
+
+        roots.push(v);
+
+        for &w in out_edges[v].iter() {
+            if num[w] == 0 {
+                visit(out_edges, w, v, brdg, tecomp, roots, s, in_s, num, time);
+            } else if u != w && in_s[w] {
+                while num[*roots.last().unwrap()] > num[w] {
+                    roots.pop();
+                }
+            }
+        }
+
+        if v == *roots.last().unwrap() {
+            brdg.push(Edge { v: u, w: v });
+            tecomp.push(vec![]);
+
+            loop {
+                let w = *s.last().unwrap();
+                s.pop();
+                in_s[w] = false;
+                tecomp.last_mut().unwrap().push(w);
+                if v == w {
+                    break;
+                }
+            }
+
+            roots.pop();
+        }
+    }
+
+    let n = out_edges.len();
+    let mut num = vec![0; n];
+    let mut in_s = vec![false; n];
+    let mut roots: Vec<usize> = vec![]; // used as stack
+    let mut s: Vec<usize> = vec![]; // used as stack
+    let mut time = 0;
+    let mut brdg: Vec<Edge> = vec![];
+    let mut tecomp: Vec<Vec<usize>> = vec![];
+    for u in 0..n {
+        if num[u] == 0 {
+            visit(
+                out_edges,
+                u,
+                n,
+                &mut brdg,
+                &mut tecomp,
+                &mut roots,
+                &mut s,
+                &mut in_s,
+                &mut num,
+                &mut time,
+            );
+            brdg.pop();
+        }
+    }
+
+    (brdg, tecomp)
+}
+
+// s と t の最小カットを求める。
+// カットの片側に含まれる頂点集合(bool)と、カットの用いる辺の集合を返す。
+#[allow(dead_code)]
+pub fn minimum_cut(out_edges: &[Vec<usize>], s: usize, t: usize) -> (Vec<bool>, Vec<Edge>) {
+    let n = out_edges.len();
+    let mut flow = vec![vec![0; n]; n];
+    let mut capacity = vec![vec![0; n]; n];
+
+    maximum_flow(out_edges, s, t, &mut capacity, &mut flow);
+
+    fn visit(
+        v: usize,
+        out_edges: &[Vec<usize>],
+        capacity: &[Vec<i32>], flow: &[Vec<i32>],
+        visited: &mut [bool],
+    ) {
+        if visited[v] {
+            return;
+        }
+        visited[v] = true;
+
+        for &w in out_edges[v].iter() {
+            if visited[w] {
+                continue;
+            }
+            if capacity[v][w] - flow[v][w] == 0 {
+                continue;
+            }
+            visit(w, out_edges, capacity, flow, visited);
+        }
+    }
+
+    let mut visited = vec![false; n];
+    visit(s, out_edges, &capacity, &flow, &mut visited);
+
+    let mut cut: Vec<Edge> = vec![];
+    for v in 0..n {
+        if !visited[v] {
+            continue;
+        }
+        for &w in out_edges[v].iter() {
+            if !visited[w] {
+                cut.push(Edge::new(v, w));
+            }
+        }
+    }
+
+    (visited, cut)
+}
+
+#[test]
+fn test_minimum_cut() {
+    let out_edges = vec![
+        /* 0 */ vec![1, 2, 3],
+        /* 1 */ vec![0, 2, 4],
+        /* 2 */ vec![0, 1, 3, 5],
+        /* 3 */ vec![0, 2],
+        /* 4 */ vec![1, 5, 7],
+        /* 5 */ vec![2, 4, 6],
+        /* 6 */ vec![5, 7],
+        /* 7 */ vec![4, 5, 6],
+    ];
+    let (_, cut) = minimum_cut(&out_edges, 0, 7);
+    assert_eq!(cut, vec![
+        Edge::new(1, 4),
+        Edge::new(2, 5),
+    ]);
+}
+
+// from http://www.prefield.com/algorithm/graph/dinic.html
+#[allow(dead_code)]
+pub fn maximum_flow(
+    out_edges: &[Vec<usize>], s: usize, t: usize,
+    capacity: &mut [Vec<i32>], flow: &mut [Vec<i32>],
+) -> i32 {
+
+    fn residue(s: usize, t: usize, capacity: &[Vec<i32>], flow: &[Vec<i32>]) -> i32 {
+        capacity[s][t] - flow[s][t]
+    }
+
+    fn augment(
+        out_edges: &[Vec<usize>], capacity: &[Vec<i32>], flow: &mut [Vec<i32>],
+        level: &[i32], finished: &mut [bool], u: usize, t: usize, cur: i32,
+    ) -> i32 {
+        if u == t || cur == 0 {
+            return cur;
+        }
+        if finished[u] {
+            return 0;
+        }
+        finished[u] = true;
+        for &dst in out_edges[u].iter() {
+            if level[dst] > level[u] {
+                let f = augment(out_edges, capacity, flow, level, finished,
+                    dst, t, cur.min(residue(u, dst, capacity, flow)));
+                if f > 0 {
+                    flow[u][dst] += f;
+                    flow[dst][u] -= f;
+                    finished[u] = false;
+                    return f;
+                }
+            }
+        }
+        return 0;
+    }
+
+    let n = out_edges.len();
+
+    for src in 0..n {
+        for &dst in out_edges[src].iter() {
+            capacity[src][dst] += 1;
+        }
+    }
+
+    let mut total: i32 = 0;
+    let mut cont = true;
+    while cont {
+        cont = false;
+
+        // make layered network
+        let mut level: Vec<i32> = vec![-1; n];
+        level[s] = 0; 
+
+        let mut queue = VecDeque::<usize>::new();
+        queue.push_back(s);
+
+        let mut d = n as i32;
+        while queue.len() > 0 && level[*queue.front().unwrap()] < d {
+            let u = queue.pop_back().unwrap();
+            if u == t {
+                d = level[u];
+            }
+            for &dst in out_edges[u].iter() {
+                if residue(u, dst, capacity, flow) > 0 && level[dst] == -1 {
+                    queue.push_back(dst);
+                    level[dst] = level[u] + 1;
+                }
+            }
+        }
+
+        // make blocking flows
+        let mut finished = vec![false; n];
+        let mut f = 1;
+        while f > 0 {
+            f = augment(out_edges, capacity, flow, &mut level, &mut finished, s, t, 10000000);
+            if f == 0 {
+                break;
+            }
+            total += f;
+            cont = true;
+        }
+    }
+    total
 }
