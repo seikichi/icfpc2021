@@ -46,6 +46,7 @@ interface Solution {
   "Commit:Params": string,
   Dislikes: number,
   Pose: Pose,
+  Score: number,
 }
 
 const useStyles = makeStyles({
@@ -56,6 +57,15 @@ const useStyles = makeStyles({
 
 interface Props {
   rows: readonly TableRowData[];
+  rowsPerParams: readonly TableRowDataForParams[];
+}
+
+interface TableRowDataForParams {
+  commitHash: string;
+  params: string;
+  solved: number;
+  score: number;
+  allSolutions: Solution[];
 }
 
 interface TableRowData {
@@ -113,16 +123,30 @@ export async function getStaticProps() {
     console.log(e);
   }
 
+  // calculate scores for all solutions
+  for (const s of solutions) {
+    const problem = problems.find(a => a.ProblemId === s.ProblemId)
+    const minimalDislike = parseInt(minimalDislikesRows[parseInt(problem.ProblemId)].cells[2].textContent)
+    const numVertices = problem.NumVertices
+    const numEdges = problem.NumEdges
+    const numHole = problem.NumHole
+    const score = s ? Math.ceil(1000 * Math.log2((numVertices * numEdges * numHole) / 6.0) * Math.sqrt((1.0 * minimalDislike + 1) / (s.Dislikes + 1))) : 0
+    s.score = score
+  }
+
+  const solutionsForEachParams: any = {}
+  const commitParams = Array.from(new Set(solutions.map((s) => s["Commit:Params"])))
+
+  for (const cp of commitParams) {
+    solutionsForEachParams[cp] = solutions.filter((s) => s["Commit:Params"] == cp)
+    const totalScoreForEachParams = solutionsForEachParams[cp].reduce((a: any, b: any) => a + b.score, 0)
+  }
+
   const rows = problems.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
     const filtered = solutions.filter(s => s.ProblemId === item.ProblemId)
     filtered.sort((a, b) => a.Dislikes - b.Dislikes)
-    // console.log(`${item.ProblemId}: ${JSON.stringify(filtered)}`)
     const solution = filtered[0]
     const minimalDislike = parseInt(minimalDislikesRows[parseInt(item.ProblemId)].cells[2].textContent)
-    const numVertices = item.NumVertices
-    const numEdges = item.NumEdges
-    const numHole = item.NumHole
-    let score = solution ? Math.ceil(1000 * Math.log2((numVertices * numEdges * numHole) / 6.0) * Math.sqrt((1.0 * minimalDislike + 1) / (solution.Dislikes + 1))) : 0
     return {
       id: parseInt(item.ProblemId),
       dislike: solution ? solution.Dislikes : -1,
@@ -131,17 +155,28 @@ export async function getStaticProps() {
       params: solution ? solution["Commit:Params"].split(":")[1] : "",
       solution: solution || null,
       minimalDislike,
-      score,
+      score: solution.score || 0,
       allSolutions: filtered
     }
   })
 
+  const rowsPerParams = Object.keys(solutionsForEachParams).map((k: any): TableRowDataForParams => {
+    return {
+      commitHash: k.split(":")[0],
+      params: k.split(":")[1],
+      score: solutionsForEachParams[k].reduce((agg: number, next: any) => agg + next.score, 0),
+      solved: solutionsForEachParams[k].length,
+      allSolutions: solutionsForEachParams[k],
+    }
+  })
+  rowsPerParams.sort((a, b) => b.score - a.score)
+
   return {
-    props: { rows }
+    props: { rows, rowsPerParams }
   }
 }
 
-export default function Home({ rows }: Props) {
+export default function Home({ rows, rowsPerParams }: Props) {
   const classes = useStyles();
   const canvasRefs = useRef([] as RefObject<HTMLCanvasElement>[]);
 
@@ -209,13 +244,16 @@ export default function Home({ rows }: Props) {
   }, [rows, canvasRefs]);
 
   const totalScore = rows.reduce((a, b) => a + b.score, 0)
-  console.log(`Total Score = ${totalScore}`)
 
   return (
     <>
       <Box>
         <Typography variant="h6" gutterBottom component="div">
           Total Score: {totalScore}
+        </Typography>
+        <CommitParamsTable rows={rowsPerParams} />
+        <Typography variant="h6" gutterBottom component="div">
+          Each Problems
         </Typography>
         <TableContainer component={Paper}>
           <Table stickyHeader className={classes.table} aria-label="simple table">
@@ -250,6 +288,39 @@ const useRowStyles = makeStyles({
     },
   },
 });
+
+function CommitParamsTable(props: { rows: readonly TableRowDataForParams[] }) {
+  const { rows } = props
+  return (
+    <Fragment>
+      <Typography variant="h6" gutterBottom component="div">
+        CommitParams Table
+      </Typography>
+      <TableContainer component={Paper}>
+        <Table aria-label="simple table">
+          <TableHead>
+            <TableRow>
+              <TableCell>CommitHash</TableCell>
+              <TableCell>Params</TableCell>
+              <TableCell align="right">Solved</TableCell>
+              <TableCell align="right">Score</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row, i) => (
+              <TableRow key={`${row.commitHash}:${row.params}`}>
+                <TableCell>{row.commitHash}</TableCell>
+                <TableCell>{row.params}</TableCell>
+                <TableCell align="right">{row.solved}</TableCell>
+                <TableCell align="right">{row.score}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Fragment>
+  )
+}
 
 function Row(props: { row: any, canvasRef: any }) {
   const { row, canvasRef } = props;
