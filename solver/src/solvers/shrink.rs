@@ -27,6 +27,12 @@ pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
     let n = solution.len();
     let mut best_variance = calc_variance(&solution);
 
+    let out_edges = make_out_edges(&input.figure.edges, n);
+    let mut orders = vec![vec![]; n];
+    for i in 0..n {
+        orders[i] = make_determined_order(&out_edges, Some(i));
+    }
+
     for iter in 0..10000 {
         if iter % (n * 10) == 0 {
             let temp = temp_input.figure.vertices;
@@ -48,7 +54,8 @@ pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
         solution[from] = np;
         let temp = temp_input.hole;
         temp_input.hole = big_box.clone();
-        let next_solution = fix_allowed_distance_violation(from, &solution, &temp_input);
+        let next_solution =
+            fix_allowed_distance_violation(from, &solution, &temp_input, &out_edges, &orders);
         temp_input.hole = temp;
         solution[from] = old;
         if next_solution.is_none() {

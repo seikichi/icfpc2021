@@ -11,6 +11,11 @@ pub fn solve(
     let m = hole_points.len();
     let mut on_hole_vertex = vec![false; n];
     let mut satisfied = vec![false; m];
+    let out_edges = make_out_edges(&input.figure.edges, n);
+    let mut orders = vec![vec![]; n];
+    for i in 0..n {
+        orders[i] = make_determined_order(&out_edges, Some(i));
+    }
     for i in 0..n {
         for j in 0..m {
             if solution[i] == hole_points[j] {
@@ -30,7 +35,8 @@ pub fn solve(
             }
             let temp = solution[j];
             solution[j] = hole_points[i];
-            let next_solution = fix_allowed_distance_violation(j, &solution, &input);
+            let next_solution =
+                fix_allowed_distance_violation(j, &solution, &input, &out_edges, &orders);
             solution[j] = temp;
             if next_solution.is_none() {
                 continue;

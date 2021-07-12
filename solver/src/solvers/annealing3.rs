@@ -55,6 +55,10 @@ pub fn solve(
     let mut current_score = tscore(&solution, &input);
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;
+    let mut orders = vec![vec![]; n];
+    for i in 0..n {
+        orders[i] = make_determined_order(&out_edges, Some(i));
+    }
     let start_at = Instant::now();
 
     let mut best_solution = solution.clone();
@@ -102,7 +106,8 @@ pub fn solve(
                 }
             }
             let w = rng.gen::<usize>() % 40 + 5;
-            let next_solution = random_move_one_point(i, w, &solution, &input, &mut rng);
+            let next_solution =
+                random_move_one_point(i, w, &solution, &input, &mut rng, &out_edges, &orders);
             if next_solution.is_none() {
                 continue;
             }
@@ -261,6 +266,8 @@ fn random_move_one_point(
     solution: &Vec<Point>,
     input: &Input,
     rng: &mut SmallRng,
+    out_edges: &Vec<Vec<usize>>,
+    orders: &Vec<Vec<usize>>,
 ) -> Option<Vec<Point>> {
     let mut gx: f64 = 0.0;
     let mut gy: f64 = 0.0;
@@ -291,7 +298,8 @@ fn random_move_one_point(
     let mut solution = solution.clone();
     let old = solution[from];
     solution[from] = np;
-    let next_solution = fix_allowed_distance_violation(from, &solution, &input);
+    let next_solution =
+        fix_allowed_distance_violation(from, &solution, &input, &out_edges, &orders);
     solution[from] = old;
     return next_solution;
 }

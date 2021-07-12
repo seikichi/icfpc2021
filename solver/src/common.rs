@@ -589,11 +589,12 @@ pub fn fix_allowed_distance_violation(
     start_point_index: usize,
     solution: &Vec<Point>,
     input: &Input,
+    out_edges: &Vec<Vec<usize>>,
+    determined_orders: &Vec<Vec<usize>>,
 ) -> Option<Vec<Point>> {
     let mut solution = solution.clone();
     let n = input.figure.vertices.len();
-    let out_edges = make_out_edges(&input.figure.edges, n);
-    let order = make_determined_order(&out_edges, Some(start_point_index));
+    let order = &determined_orders[start_point_index];
     let mut determined = vec![false; n];
     let mut moved = vec![false; n];
     determined[start_point_index] = true;
@@ -673,16 +674,16 @@ pub fn fix_allowed_distance_violation(
         }
     }
 
-    if !does_valid_pose(
-        &solution,
-        &input.figure,
-        &input.hole,
-        input.epsilon,
-        &vec![],
-        None,
-    ) {
-        return None;
-    }
+    // if !does_valid_pose(
+    // &solution,
+    // &input.figure,
+    // &input.hole,
+    // input.epsilon,
+    // &vec![],
+    // None,
+    // ) {
+    // return None;
+    // }
 
     return Some(solution);
 }
@@ -817,7 +818,8 @@ pub fn minimum_cut(out_edges: &[Vec<usize>], s: usize, t: usize) -> (Vec<bool>, 
     fn visit(
         v: usize,
         out_edges: &[Vec<usize>],
-        capacity: &[Vec<i32>], flow: &[Vec<i32>],
+        capacity: &[Vec<i32>],
+        flow: &[Vec<i32>],
         visited: &mut [bool],
     ) {
         if visited[v] {
@@ -867,26 +869,31 @@ fn test_minimum_cut() {
         /* 7 */ vec![4, 5, 6],
     ];
     let (_, cut) = minimum_cut(&out_edges, 0, 7);
-    assert_eq!(cut, vec![
-        Edge::new(1, 4),
-        Edge::new(2, 5),
-    ]);
+    assert_eq!(cut, vec![Edge::new(1, 4), Edge::new(2, 5),]);
 }
 
 // from http://www.prefield.com/algorithm/graph/dinic.html
 #[allow(dead_code)]
 pub fn maximum_flow(
-    out_edges: &[Vec<usize>], s: usize, t: usize,
-    capacity: &mut [Vec<i32>], flow: &mut [Vec<i32>],
+    out_edges: &[Vec<usize>],
+    s: usize,
+    t: usize,
+    capacity: &mut [Vec<i32>],
+    flow: &mut [Vec<i32>],
 ) -> i32 {
-
     fn residue(s: usize, t: usize, capacity: &[Vec<i32>], flow: &[Vec<i32>]) -> i32 {
         capacity[s][t] - flow[s][t]
     }
 
     fn augment(
-        out_edges: &[Vec<usize>], capacity: &[Vec<i32>], flow: &mut [Vec<i32>],
-        level: &[i32], finished: &mut [bool], u: usize, t: usize, cur: i32,
+        out_edges: &[Vec<usize>],
+        capacity: &[Vec<i32>],
+        flow: &mut [Vec<i32>],
+        level: &[i32],
+        finished: &mut [bool],
+        u: usize,
+        t: usize,
+        cur: i32,
     ) -> i32 {
         if u == t || cur == 0 {
             return cur;
@@ -897,8 +904,16 @@ pub fn maximum_flow(
         finished[u] = true;
         for &dst in out_edges[u].iter() {
             if level[dst] > level[u] {
-                let f = augment(out_edges, capacity, flow, level, finished,
-                    dst, t, cur.min(residue(u, dst, capacity, flow)));
+                let f = augment(
+                    out_edges,
+                    capacity,
+                    flow,
+                    level,
+                    finished,
+                    dst,
+                    t,
+                    cur.min(residue(u, dst, capacity, flow)),
+                );
                 if f > 0 {
                     flow[u][dst] += f;
                     flow[dst][u] -= f;
@@ -925,7 +940,7 @@ pub fn maximum_flow(
 
         // make layered network
         let mut level: Vec<i32> = vec![-1; n];
-        level[s] = 0; 
+        level[s] = 0;
 
         let mut queue = VecDeque::<usize>::new();
         queue.push_back(s);
@@ -948,7 +963,16 @@ pub fn maximum_flow(
         let mut finished = vec![false; n];
         let mut f = 1;
         while f > 0 {
-            f = augment(out_edges, capacity, flow, &mut level, &mut finished, s, t, 10000000);
+            f = augment(
+                out_edges,
+                capacity,
+                flow,
+                &mut level,
+                &mut finished,
+                s,
+                t,
+                10000000,
+            );
             if f == 0 {
                 break;
             }
