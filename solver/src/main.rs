@@ -14,6 +14,13 @@ fn main() {
             "dfs".to_string()
         }
     };
+    let initial_solution: Option<Vec<Point>> = {
+        if let Ok(s) = std::env::var("INITIAL_SOLUTION") {
+            Some(parse_pose_json(&s))
+        } else {
+            None
+        }
+    };
     let used_bonus_types: Vec<BonusType> = {
         if let Ok(ss) = std::env::var("USED_BONUS_TYPES") {
             ss.split(",").map(|s| BonusType::from_str(&s)).collect()
@@ -37,7 +44,6 @@ fn main() {
         }
     };
 
-    eprintln!("initial_solver = {}", initial_solver);
     eprintln!("time_limit = {:?}", time_limit);
 
     let input = read_input();
@@ -46,13 +52,32 @@ fn main() {
         return solve_with_dfs2(&input, &used_bonus_types);
     }
 
-    let initial_solution = match initial_solver.as_str() {
-        "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
-        // "dfs2" => solve_with_dfs2(&input, &used_bonus_types),
-        "shrink" => solvers::shrink::solve(&input, fix_seed),
-        _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
+    let initial = if initial_solution.is_none() {
+        eprintln!("initial_solver = {}", initial_solver);
+        match initial_solver.as_str() {
+            "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
+            // "dfs2" => solve_with_dfs2(&input, &used_bonus_types),
+            "shrink" => solvers::shrink::solve(&input, fix_seed),
+            _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
+        }
+    } else {
+        let solution = initial_solution.unwrap();
+        eprintln!("{:?}", solution);
+        eprintln!("using initial solution");
+        let dislike = calculate_dislike(&solution, &input.hole);
+        if !common::does_valid_pose(
+            &solution,
+            &input.figure,
+            &input.hole,
+            input.epsilon,
+            &used_bonus_types,
+            None,
+        ) {
+            panic!("initial solution is invalid pose");
+        };
+        Some((solution, dislike))
     };
-    if let Some((solution1, dislike1)) = initial_solution {
+    if let Some((solution1, dislike1)) = initial {
         eprintln!("initial: dislike = {}", dislike1);
 
         let solution2 = if skip_ortho {
