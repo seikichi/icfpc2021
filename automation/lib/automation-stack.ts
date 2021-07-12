@@ -10,11 +10,18 @@ export class AutomationStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // get commit Hash 
+    // get commit Hash
     const commitHash = child_process.execSync("git rev-parse --short HEAD").toString().trim()
 
     const fun = new lambda.DockerImageFunction(this, "Solver", {
       code: lambda.DockerImageCode.fromImageAsset("../solver"),
+      timeout: cdk.Duration.minutes(15),
+      memorySize: 512,
+      environment: { COMMIT: commitHash }
+    });
+
+    const milp = new lambda.DockerImageFunction(this, "MILP", {
+      code: lambda.DockerImageCode.fromImageAsset("../milp"),
       timeout: cdk.Duration.minutes(15),
       memorySize: 512,
       environment: { COMMIT: commitHash }
@@ -37,7 +44,10 @@ export class AutomationStack extends cdk.Stack {
       }
     });
 
-    problems.grantReadWriteData(fun); // TODO: Change to grantReadData
+    problems.grantReadWriteData(fun);
     solutions.grantReadWriteData(fun);
+
+    problems.grantReadWriteData(milp);
+    solutions.grantReadWriteData(milp);
   }
 }

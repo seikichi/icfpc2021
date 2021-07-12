@@ -103,8 +103,8 @@ export async function getStaticProps() {
       id: parseInt(item.ProblemId),
       dislike: solution ? solution.Dislikes : -1,
       problem: item.Problem as Problem,
-      commitHash: solution ? solution["Commit\:Params"].split(":")[0] : "",
-      params: solution ? solution["Commit\:Params"].split(":")[1] : "",
+      commitHash: solution ? solution["Commit:Params"].split(":")[0] : "",
+      params: solution ? solution["Commit:Params"].split(":")[1] : "",
       solution: solution || null,
       minimalDislike: 0,
       score: 0,
@@ -211,12 +211,21 @@ export default function Home({ rows }: Props) {
   )
 }
 
+const useRowStyles = makeStyles({
+  root: {
+    '& > *': {
+      borderBottom: 'unset',
+    },
+  },
+});
+
 function Row(props: { row: any, canvasRef: any }) {
   const { row, canvasRef } = props;
   const [open, setOpen] = useState(false);
+  const classes = useRowStyles()
   return (
     <Fragment>
-      <TableRow key={row.id}>
+      <TableRow key={row.id} className={classes.root}>
         <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
           {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
         </IconButton>
@@ -233,7 +242,7 @@ function Row(props: { row: any, canvasRef: any }) {
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box margin={1}>
               <Typography variant="h6" gutterBottom component="div">
