@@ -53,6 +53,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     solver.search(&order, &possible_ranges)
 }
 
+/*
 #[derive(Debug, Clone)]
 struct State {
     i: usize,
@@ -60,6 +61,7 @@ struct State {
     solution: Vec<Point>,
     determined: Vec<bool>,
 }
+*/
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct PossibleRange {
