@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+
 import json
 import sys
 import math
-from functools import cache
 from collections import defaultdict
 
 from pyscipopt import Model
@@ -13,27 +14,21 @@ def distance(x1, y1, x2, y2):
     return (x1 - x2) ** 2 + (y1 - y2) ** 2
 
 
-problem_id = sys.argv[1]
-
-# INPUT = "../problems/14.problem"
-INPUT = f"../problems/{problem_id}.problem"
-
-with open(INPUT, encoding='utf-8') as f:
-    problem = json.load(f)
+problem = json.load(sys.stdin)
 
 hole_poly = Polygon(problem['hole'])
 
 xmin, ymin, xmax, ymax = map(int, hole_poly.bounds)
-print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}")
+print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}", file=sys.stderr)
 
 hole = problem['hole']
 epsilon = problem['epsilon']
 vertices = problem['figure']['vertices']
 edges = problem['figure']['edges']
 
-print(f"# of vertices = {len(vertices)}")
-print(f"# of edges = {len(edges)}")
-print(f"# of hole = {len(hole)}")
+print(f"# of vertices = {len(vertices)}", file=sys.stderr)
+print(f"# of edges = {len(edges)}", file=sys.stderr)
+print(f"# of hole = {len(hole)}", file=sys.stderr)
 
 points_by_distances = {}
 
@@ -56,7 +51,7 @@ for i in range(-xmax, xmax + 1):
 
 model = Model("icfpc2021")
 
-print("create variables (b) ...")
+print("create variables (b) ...", file=sys.stderr)
 pvx = []
 pvy = []
 for i in range(len(vertices)):
@@ -84,7 +79,7 @@ for i, (vi, wi) in enumerate(edges):
     dx_candidates_of_edge.append(dxs)
     dy_candidates_of_edge.append(dys)
 
-print("create edge length variable (el) ...")
+print("create edge length variable (el) ...", file=sys.stderr)
 elx = []
 ely = []
 for i in range(len(edges)):
@@ -93,7 +88,7 @@ for i in range(len(edges)):
     ely.append({dy: model.addVar(vtype="B")
                for dy in dy_candidates_of_edge[i]})
 
-print("create edge length constraints ...")
+print("create edge length constraints ...", file=sys.stderr)
 for i, (vi, wi) in enumerate(edges):
     model.addCons(sum(elx[i][dx] for dx in dx_candidates_of_edge[i]) == 1)
     model.addCons(sum(ely[i][dy] for dy in dy_candidates_of_edge[i]) == 1)
@@ -184,17 +179,17 @@ model.setObjective(
     ),
     "minimize"
 )
+model.hideOutput()
 model.optimize()
 
-print("Optimal value:", model.getObjVal())
+print("Optimal value:", model.getObjVal(), file=sys.stderr)
 
 result = []
 for i in range(len(vertices)):
-    print(i)
     vx, vy = vertices[i]
     nx = model.getVal(pvx[i])
     ny = model.getVal(pvy[i])
-    print(f"({nx}, {ny}) <- ({vx}, {vy})")
+    print(f"({nx}, {ny}) <- ({vx}, {vy})", file=sys.stderr)
     result.append([int(round(nx)), int(round(ny))])
 
 # for i, (vi, wi) in enumerate(edges):
@@ -210,6 +205,4 @@ for i in range(len(vertices)):
 #             print(f"pvy[{vi}] = {model.getVal(pvy[vi])}")
 #             print(f"pvy[{wi}] = {model.getVal(pvy[wi])}")
 
-
-with open(f"solutions/new-{problem_id}.solution", 'w', encoding='utf-8') as f:
-    json.dump({'vertices': result}, f)
+print(json.dumps({'vertices': result}))
