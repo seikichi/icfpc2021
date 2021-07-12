@@ -16,7 +16,7 @@ export class AutomationStack extends cdk.Stack {
     const fun = new lambda.DockerImageFunction(this, "Solver", {
       code: lambda.DockerImageCode.fromImageAsset("../solver"),
       timeout: cdk.Duration.minutes(15),
-      memorySize: 4096,
+      memorySize: 2048,
       environment: { COMMIT: commitHash }
     });
 
