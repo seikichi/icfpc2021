@@ -37,7 +37,7 @@ pub fn solve(
             }
             let next_solution = next_solution.unwrap();
 
-            let dislike = calculate_dislike(&solution, &input.hole);
+            let dislike = calculate_dislike(&next_solution, &input.hole);
             if does_valid_pose(
                 &next_solution,
                 &input.figure,
@@ -45,7 +45,7 @@ pub fn solve(
                 input.epsilon,
                 used_bonus_types,
                 None,
-            ) && dislike <= best_dislike
+            ) && dislike < best_dislike
             {
                 solution = next_solution;
                 best_dislike = dislike;

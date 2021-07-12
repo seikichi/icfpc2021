@@ -4,6 +4,7 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use std::time::{Duration, Instant};
 
 type Vector2d = geo::Coordinate<f64>;
 
@@ -12,7 +13,7 @@ static SEED: [u8; 32] = [
     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
 ];
 
-pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
+pub fn solve(input: &Input, time_limit: Duration) -> Option<(Vec<Point>, f64)> {
     let n = input.figure.vertices.len();
 
     //let original_vertices = input.figure.vertices.clone();
@@ -40,6 +41,9 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
         epsilon: input.epsilon,
         original: input.figure.vertices.clone(),
         hole: input.hole.clone(),
+        boundary_terminals: HashSet::from_iter(input.hole.exterior().points_iter().map(|p| (p.x() as i64, p.y() as i64))),
+        time_limit: time_limit,
+        start_at: Instant::now(),
     };
 
     let order = solver.reorder();
@@ -53,6 +57,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     solver.search(&order, &possible_ranges)
 }
 
+/*
 #[derive(Debug, Clone)]
 struct State {
     i: usize,
@@ -60,6 +65,7 @@ struct State {
     solution: Vec<Point>,
     determined: Vec<bool>,
 }
+*/
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct PossibleRange {
@@ -79,6 +85,9 @@ struct Solver {
     epsilon: i64,
     original: Vec<Point>,
     hole: Polygon,
+    boundary_terminals: HashSet<(i64, i64)>,
+    time_limit: Duration,
+    start_at: Instant,
 }
 
 impl Solver {
@@ -195,7 +204,7 @@ impl Solver {
     }
 
     fn search(
-        &self, order: &[Edge], possible_ranges: &[PossibleRange],
+        &self, order: &[Edge], possible_ranges: &[PossibleRange]
     ) -> Option<(Vec<Point>, f64)> {
         let mut rng = SmallRng::from_seed(SEED);
         let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
@@ -204,8 +213,8 @@ impl Solver {
         hole_points.shuffle(&mut rng);
         candidates.extend(hole_points.iter().take(20));
 
-        //let mut best_solution = None;
-        //let mut best_dislike = 1e20;
+        let mut best_solution = None;
+        let mut best_dislike = 1e20;
 
         for &pos in candidates.iter() {
             let mut solution = self.original.clone();
@@ -215,17 +224,25 @@ impl Solver {
             solution[v] = pos;
             determined[v] = true;
 
-            if let Some((s, dislike)) = self.dfs(0, order, possible_ranges, &mut solution, &mut determined) {
-                return Some((s, dislike));
-                //if dislike < best_dislike {
-                //    best_solution = Some(s);
-                //    best_dislike = dislike;
-                //}
+            let mut n_iter = 0;
+
+            if let Some((s, dislike)) = self.dfs(0, order, possible_ranges, &mut solution, &mut determined, &mut n_iter) {
+                if dislike < best_dislike {
+                    best_solution = Some(s);
+                    best_dislike = dislike;
+                }
+            } else {
+                eprintln!("not found... (n_iter = {}, start = {:?})", n_iter, pos);
+            }
+
+            // タイムリミットを超えていたらすぐに終了する
+            if Instant::now() - self.start_at >= self.time_limit {
+                eprintln!("time limit exceeded. return early.");
+                return best_solution.map(|s| (s, best_dislike));
             }
         }
 
-        //best_solution.map(|s| (s, best_dislike))
-        None
+        best_solution.map(|s| (s, best_dislike))
     }
 
     fn dfs(
@@ -235,11 +252,26 @@ impl Solver {
         possible_ranges: &[PossibleRange],
         solution: &mut Vec<Point>,
         determined: &mut [bool],
+        n_iter: &mut i64,
     ) -> Option<(Vec<Point>, f64)> {
         if i == self.edge_count {
             let dislike = calculate_dislike(&solution, &self.hole);
             eprintln!("found!! dislike={}", dislike);
             return Some((solution.clone(), dislike));
+        }
+
+        // タイムリミット
+        if *n_iter % 10000 == 0 {
+            let elapsed = Instant::now() - self.start_at;
+            if elapsed >= self.time_limit {
+                return None;
+            }
+        }
+        *n_iter += 1;
+        // iteration の回数が多すぎるときは、初期点を選び方を変えたほうが良さそうなので
+        // 探索を打ち切る
+        if *n_iter > 1000000 {
+            return None;
         }
 
         let src = order[i].v;
@@ -257,7 +289,7 @@ impl Solver {
                 false,
             ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
             if ok {
-                return self.dfs(i+1, order, possible_ranges, solution, determined);
+                return self.dfs(i+1, order, possible_ranges, solution, determined, n_iter);
             } else {
                 return None;
             }
@@ -289,6 +321,11 @@ impl Solver {
 
         // candidates をよさげな順番に並べたい
         candidates.sort_by_key(|p1| {
+            // 端点が候補にあるならそれを優先的に選びたい
+            if self.boundary_terminals.contains(&(p1.x() as i64, p1.y() as i64)) {
+                return -100000000;
+            }
+
             // すでに決まっているエッジの方向とはできるだけ違う方向に行きたい
             let v1 = p1.0 - p0.0;
             let mut sim = 0.0;
@@ -315,7 +352,7 @@ impl Solver {
         for p1 in candidates.iter() {
             if does_line_fit_in_hole(&p0, &p1, &self.hole) {
                 solution[dst] = *p1;
-                if let Some(ret) = self.dfs(i + 1, order, possible_ranges, solution, determined) {
+                if let Some(ret) = self.dfs(i + 1, order, possible_ranges, solution, determined, n_iter) {
                     determined[dst] = false;
                     return Some(ret);
                 }
