@@ -62,7 +62,6 @@ fn main() {
         }
     } else {
         let solution = initial_solution.unwrap();
-        eprintln!("{:?}", solution);
         eprintln!("using initial solution");
         let dislike = calculate_dislike(&solution, &input.hole);
         if !common::does_valid_pose(
