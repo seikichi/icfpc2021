@@ -52,7 +52,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> Option<(Vec<Point>, f64)> {
 
     let possible_ranges = solver.calculate_possible_ranges(&order);
 
-    eprintln!("possible_ranges = {:?}", possible_ranges);
+    //eprintln!("possible_ranges = {:?}", possible_ranges);
 
     solver.search(&order, &possible_ranges)
 }
