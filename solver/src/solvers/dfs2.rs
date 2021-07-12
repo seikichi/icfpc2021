@@ -270,7 +270,7 @@ impl Solver {
         *n_iter += 1;
         // iteration の回数が多すぎるときは、初期点を選び方を変えたほうが良さそうなので
         // 探索を打ち切る
-        if *n_iter > 1000000 {
+        if *n_iter > 10000000 {
             return None;
         }
 
