@@ -3,6 +3,7 @@ use geo::algorithm::contains::Contains;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use std::collections::HashSet;
+use std::iter::FromIterator;
 
 type Vector2d = geo::Coordinate<f64>;
 
@@ -32,7 +33,7 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
         vertex_count: out_edges.len(),
         edge_count: input.figure.edges.len(),
         out_edges,
-        //bridges,
+        bridges,
         tecomp,
         vertex2tecomp,
         tecomp_out_edges,
@@ -46,6 +47,8 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     assert_eq!(order.len(), input.figure.edges.len());
 
     let possible_ranges = solver.calculate_possible_ranges(&order);
+
+    eprintln!("possible_ranges = {:?}", possible_ranges);
 
     solver.search(&order, &possible_ranges)
 }
@@ -62,13 +65,14 @@ struct State {
 struct PossibleRange {
     center_index: usize,
     radius: f64,
+    free: bool,
 }
 
 struct Solver {
     vertex_count: usize,
     edge_count: usize,
     out_edges: Vec<Vec<usize>>,
-    //bridges: Vec<Edge>,
+    bridges: Vec<Edge>,
     tecomp: Vec<Vec<usize>>,
     vertex2tecomp: Vec<usize>,
     tecomp_out_edges: Vec<Vec<(usize, Edge)>>,
@@ -140,30 +144,173 @@ impl Solver {
 
     // order の各 edge に対して、dst が存在してよい範囲を計算する
     fn calculate_possible_ranges(&self, order: &[Edge]) -> Vec<PossibleRange> {
-        let mut possible_ranges = vec![PossibleRange { center_index: 0, radius: 0.0 }; self.edge_count];
+        let mut possible_ranges = vec![PossibleRange { center_index: 0, radius: 0.0, free: false }; self.edge_count];
+
         let mut determined = vec![false; self.vertex_count];
         determined[order[0].v] = true;
+
         let mut last = 0;
+
+        let bridges: HashSet<Edge> = HashSet::from_iter(self.bridges.iter().copied());
+
         for i in 0..self.edge_count {
+            let src = order[i].v;
             let dst = order[i].w;
-            if determined[dst] {
-                let center_index = i;
+
+            if bridges.contains(&Edge::new(src, dst)) || bridges.contains(&Edge::new(dst, src)) {
+                possible_ranges[i] = PossibleRange { center_index: 0, radius: 0.0, free: true };
+
+            } else if determined[dst] {
+                let center_index = dst;
                 let mut sum_len = 0.0;
-                possible_ranges[i] = PossibleRange { center_index, radius: 0.0 };
+                possible_ranges[i] = PossibleRange { center_index, radius: 0.0, free: false };
                 for j in (last+1..=i).rev() {
                     let o_src = self.original[order[j].v];
                     let o_dst = self.original[order[j].w];
                     let sq_dist = squared_distance(&o_src, &o_dst);
                     let ring = Ring::from_epsilon(Point::new(0.0, 0.0), self.epsilon, sq_dist);
                     sum_len += ring.outer_radius;
-                    possible_ranges[j-1] = PossibleRange { center_index, radius: sum_len };
+                    possible_ranges[j-1] = PossibleRange { center_index, radius: sum_len, free: false };
                 }
                 last = i + 1;
             }
+
+            determined[dst] = true;
         }
         possible_ranges
     }
 
+    fn search(
+        &self, order: &[Edge], possible_ranges: &[PossibleRange],
+    ) -> Option<(Vec<Point>, f64)> {
+        let mut rng = SmallRng::from_seed(SEED);
+        let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
+
+        let mut hole_points = all_points_in_hole(&self.hole);
+        hole_points.shuffle(&mut rng);
+        candidates.extend(hole_points.iter().take(20));
+
+        let mut best_solution = None;
+        let mut best_dislike = 1e20;
+
+        for &pos in candidates.iter() {
+            let mut solution = self.original.clone();
+            let mut determined = vec![false; self.vertex_count];
+            let v = order[0].v;
+
+            solution[v] = pos;
+            determined[v] = true;
+
+            if let Some((s, dislike)) = self.dfs(0, order, possible_ranges, &mut solution, &mut determined) {
+                if dislike < best_dislike {
+                    best_solution = Some(s);
+                    best_dislike = dislike;
+                }
+            }
+        }
+
+        best_solution.map(|s| (s, best_dislike))
+    }
+
+    fn dfs(
+        &self,
+        i: usize,
+        order: &[Edge],
+        possible_ranges: &[PossibleRange],
+        solution: &mut Vec<Point>,
+        determined: &mut [bool],
+    ) -> Option<(Vec<Point>, f64)> {
+        if i == self.edge_count {
+            let dislike = calculate_dislike(&solution, &self.hole);
+            eprintln!("found!! dislike={}", dislike);
+            return Some((solution.clone(), dislike));
+        }
+
+        let src = order[i].v;
+        let dst = order[i].w;
+
+        if determined[dst] {
+            // src も dst も確定している。
+            // この辺が invalid だったらバックトラックしないといけない。
+            let ok = is_allowed_distance(
+                &solution[src],
+                &solution[dst],
+                &self.original[src],
+                &self.original[dst],
+                self.epsilon,
+                false,
+            ) && does_line_fit_in_hole(&solution[src], &solution[dst], &self.hole);
+            if ok {
+                return self.dfs(i+1, order, possible_ranges, solution, determined);
+            } else {
+                return None;
+            }
+        }
+
+        // 頂点 dst の位置を決める
+        determined[dst] = true;
+
+        let p0 = solution[src];
+        let op0 = self.original[src];
+        let op1 = self.original[dst];
+        let ring = Ring::from_epsilon(p0, self.epsilon, squared_distance(&op0, &op1));
+
+        let mut candidates = vec![];
+        
+        each_ring_points(&ring, |p| {
+            let PossibleRange { center_index, radius, free } =  possible_ranges[i];
+            let ok = {
+                if free {
+                    true
+                } else {
+                    distance(&solution[center_index], &p) <= radius
+                }
+            };
+            if ok {
+                candidates.push(p);
+            }
+        });
+
+        // candidates をよさげな順番に並べたい
+        candidates.sort_by_key(|p1| {
+            // すでに決まっているエッジの方向とはできるだけ違う方向に行きたい
+            let v1 = p1.0 - p0.0;
+            let mut sim = 0.0;
+            for &w in self.out_edges[src].iter() {
+                if determined[w] {
+                    let p2 = solution[w];
+                    let v2 = p2.0 - p0.0;
+                    sim += cosine_sim(v1, v2);
+                }
+            }
+            (sim * 100000.0) as i32
+        });
+
+        // 間引く
+        let max_candidates = if self.vertex_count > 30 { 4 } else { 20 };
+        if candidates.len() > max_candidates {
+            candidates = candidates
+                .iter()
+                .step_by(candidates.len() / max_candidates)
+                .copied()
+                .collect();
+        }
+
+        for p1 in candidates.iter() {
+            if does_line_fit_in_hole(&p0, &p1, &self.hole) {
+                solution[dst] = *p1;
+                if let Some(ret) = self.dfs(i + 1, order, possible_ranges, solution, determined) {
+                    determined[dst] = false;
+                    return Some(ret);
+                }
+            }
+        }
+
+        determined[dst] = false;
+        None
+    }
+
+    /*
     fn search(
         &self, order: &[Edge], possible_ranges: &[PossibleRange],
     ) -> Option<(Vec<Point>, f64)> {
@@ -326,8 +473,10 @@ impl Solver {
 
         None
     }
+    */
 }
 
+#[allow(dead_code)]
 fn calculate_dislike_determined_only(
     vertices: &[Point],
     hole: &Polygon,
