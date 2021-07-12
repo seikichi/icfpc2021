@@ -2,7 +2,7 @@ use crate::common::*;
 use geo::algorithm::contains::Contains;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 type Vector2d = geo::Coordinate<f64>;
 
@@ -45,7 +45,9 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     //eprintln!("reorder = {:?}", order);
     assert_eq!(order.len(), input.figure.edges.len());
 
-    solver.search(&order)
+    let possible_ranges = solver.calculate_possible_ranges(&order);
+
+    solver.search(&order, &possible_ranges)
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +56,12 @@ struct State {
     dislike: f64,
     solution: Vec<Point>,
     determined: Vec<bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct PossibleRange {
+    center_index: usize,
+    radius: f64,
 }
 
 struct Solver {
@@ -130,7 +138,35 @@ impl Solver {
         }
     }
 
-    fn search(&self, order: &[Edge]) -> Option<(Vec<Point>, f64)> {
+    // order の各 edge に対して、dst が存在してよい範囲を計算する
+    fn calculate_possible_ranges(&self, order: &[Edge]) -> Vec<PossibleRange> {
+        let mut possible_ranges = vec![PossibleRange { center_index: 0, radius: 0.0 }; self.edge_count];
+        let mut determined = vec![false; self.vertex_count];
+        determined[order[0].v] = true;
+        let mut last = 0;
+        for i in 0..self.edge_count {
+            let dst = order[i].w;
+            if determined[dst] {
+                let center_index = i;
+                let mut sum_len = 0.0;
+                possible_ranges[i] = PossibleRange { center_index, radius: 0.0 };
+                for j in (last+1..=i).rev() {
+                    let o_src = self.original[order[j].v];
+                    let o_dst = self.original[order[j].w];
+                    let sq_dist = squared_distance(&o_src, &o_dst);
+                    let ring = Ring::from_epsilon(Point::new(0.0, 0.0), self.epsilon, sq_dist);
+                    sum_len += ring.outer_radius;
+                    possible_ranges[j-1] = PossibleRange { center_index, radius: sum_len };
+                }
+                last = i + 1;
+            }
+        }
+        possible_ranges
+    }
+
+    fn search(
+        &self, order: &[Edge], possible_ranges: &[PossibleRange],
+    ) -> Option<(Vec<Point>, f64)> {
         let mut queue: Vec<Vec<State>> = vec![Vec::new(); self.edge_count + 1];
         let mut rng = SmallRng::from_seed(SEED);
         let mut candidates: Vec<Point> = self.hole.exterior().points_iter().collect();
@@ -160,7 +196,7 @@ impl Solver {
         let mut best_solution = None;
         let mut best_dislike = 1e20;
 
-        let max_iteration = 1000;
+        let max_iteration = 10000;
         for _iter in 0..max_iteration {
             for i in 0..self.edge_count {
                 if queue[i].len() == 0 {
@@ -173,7 +209,7 @@ impl Solver {
 
                 let state = queue[i].pop().unwrap();
                 if let Some((solution, dislike)) =
-                    self.generate_next_states(state, order, &mut queue[i + 1])
+                    self.generate_next_states(state, order, possible_ranges, &mut queue[i + 1])
                 {
                     if dislike < best_dislike {
                         best_solution = Some(solution);
@@ -190,6 +226,7 @@ impl Solver {
         &self,
         state: State,
         order: &[Edge],
+        possible_ranges: &[PossibleRange],
         queue: &mut Vec<State>,
     ) -> Option<(Vec<Point>, f64)> {
         let State {
@@ -238,7 +275,15 @@ impl Solver {
         let op1 = self.original[dst];
         let ring = Ring::from_epsilon(p0, self.epsilon, squared_distance(&op0, &op1));
 
-        let mut candidates = ring_points(&ring);
+        let mut candidates = vec![];
+        
+        each_ring_points(&ring, |p| {
+            let PossibleRange { center_index, radius } =  possible_ranges[i];
+            let dist = distance(&solution[center_index], &p);
+            if dist <= radius {
+                candidates.push(p);
+            }
+        });
 
         // candidates をよさげな順番に並べたい
         candidates.sort_by_key(|p1| {
