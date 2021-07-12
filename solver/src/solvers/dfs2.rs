@@ -88,10 +88,21 @@ impl Solver {
         //let mut vertex_visited = vec![false; self.vertex_count];
         let mut used_edges: HashSet<Edge> = HashSet::new();
         let mut order: Vec<Edge> = vec![];
-        let tecomp_id = self.vertex2tecomp[0];
+
+        let mut start_vertex = 0;
+        let mut best_oe = self.out_edges[0].len();
+        for v in 0..self.vertex_count {
+            let oe = self.out_edges[v].len();
+            if oe > best_oe {
+                start_vertex = v;
+                best_oe = oe;
+            }
+        }
+
+        let tecomp_id = self.vertex2tecomp[start_vertex];
         self.reorder_tecomps(
             tecomp_id,
-            0,
+            start_vertex,
             &mut tecomp_visited,
             &mut used_edges,
             &mut order,
@@ -127,7 +138,10 @@ impl Solver {
         used_edges: &mut HashSet<Edge>,
         order: &mut Vec<Edge>,
     ) {
-        for &w in self.out_edges[v].iter() {
+        let mut out_edges = self.out_edges[v].clone();
+        out_edges.sort_by_key(|w| self.out_edges[*w].len());
+
+        for &w in out_edges.iter().rev() {
             let e = Edge::new(v, w);
             if used_edges.contains(&e) {
                 continue;
@@ -190,8 +204,8 @@ impl Solver {
         hole_points.shuffle(&mut rng);
         candidates.extend(hole_points.iter().take(20));
 
-        let mut best_solution = None;
-        let mut best_dislike = 1e20;
+        //let mut best_solution = None;
+        //let mut best_dislike = 1e20;
 
         for &pos in candidates.iter() {
             let mut solution = self.original.clone();
@@ -202,14 +216,16 @@ impl Solver {
             determined[v] = true;
 
             if let Some((s, dislike)) = self.dfs(0, order, possible_ranges, &mut solution, &mut determined) {
-                if dislike < best_dislike {
-                    best_solution = Some(s);
-                    best_dislike = dislike;
-                }
+                return Some((s, dislike));
+                //if dislike < best_dislike {
+                //    best_solution = Some(s);
+                //    best_dislike = dislike;
+                //}
             }
         }
 
-        best_solution.map(|s| (s, best_dislike))
+        //best_solution.map(|s| (s, best_dislike))
+        None
     }
 
     fn dfs(
