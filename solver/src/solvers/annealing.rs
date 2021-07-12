@@ -128,15 +128,36 @@ fn make_next_candidates(
     let some_neighbor = out_edges[i][0];
     let original_squared_distance =
         squared_distance(&original_vertices[i], &original_vertices[some_neighbor]);
-    let ring = Ring::from_epsilon(solution[some_neighbor], epsilon, original_squared_distance);
+    if original_squared_distance < 100.0 || epsilon < 100000 {
+        let ring = Ring::from_epsilon(solution[some_neighbor], epsilon, original_squared_distance);
 
-    let mut points = ring_points(&ring);
-    points.shuffle(rng);
-    for &p in points.iter() {
-        if !is_valid_point_move(i, &p, solution, original_vertices, out_edges, hole, epsilon) {
-            continue;
+        let mut points = ring_points(&ring);
+        points.shuffle(rng);
+        for &p in points.iter() {
+            if !is_valid_point_move(i, &p, solution, original_vertices, out_edges, hole, epsilon) {
+                continue;
+            }
+            return p;
         }
-        return p;
+    } else {
+        let od = original_squared_distance.sqrt();
+        let low = od * (1.0 - epsilon as f64 / 1000000.0).sqrt();
+        let high = od * (1.0 + epsilon as f64 / 1000000.0).sqrt();
+        for _iter in 0..100 {
+            let d = low + (high - low) * rng.gen::<f64>();
+            let theta = 2.0 * std::f64::consts::PI * rng.gen::<f64>();
+            let vect = Point::new(
+                (theta.cos() * d + 0.5).floor(),
+                (theta.sin() * d + 0.5).floor(),
+            );
+            let p = solution[some_neighbor] + vect;
+            //for &p in points.iter() {
+            if !is_valid_point_move(i, &p, solution, original_vertices, out_edges, hole, epsilon) {
+                continue;
+            }
+            return p;
+        }
+        return solution[i];
     }
     unreachable!()
 }
