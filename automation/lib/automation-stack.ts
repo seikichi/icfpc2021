@@ -23,7 +23,7 @@ export class AutomationStack extends cdk.Stack {
     const milp = new lambda.DockerImageFunction(this, "MILP", {
       code: lambda.DockerImageCode.fromImageAsset("../milp"),
       timeout: cdk.Duration.minutes(15),
-      memorySize: 512,
+      memorySize: 2048,
       environment: { COMMIT: commitHash }
     });
 

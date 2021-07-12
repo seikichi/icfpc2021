@@ -50,6 +50,7 @@ const TableName = "Problems";
         try {
             await lambdaClient.invoke({
                 FunctionName: 'AutomationStack-Solver4A42070C-fAxknDnlrUfm',
+                // FunctionName: "AutomationStack-MILP53A5D3FA-gQrZlNlSLS3j",
                 InvocationType: "Event",
                 Payload: JSON.stringify(params)
             }).promise()

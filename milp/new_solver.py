@@ -49,7 +49,8 @@ def find_largest_sub_convex_hole(hole):
 
     return result
 
-convex_hole = find_largest_sub_convex_hole(hole)
+# convex_hole = find_largest_sub_convex_hole(hole)
+convex_hole = hole # FIXME
 convex_hole_poly = Polygon(convex_hole)
 
 xmin, ymin, xmax, ymax = map(int, convex_hole_poly.bounds)
@@ -160,7 +161,8 @@ for i in range(len(convex_hole)):
 for i in range(len(convex_hole)):
     model.addCons(sum(sign[i][j] for j in range(len(vertices))) == 1)
 
-MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
+# MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
+MAX_D = 1
 hdlx = []
 hdly = []
 for i in range(len(convex_hole)):

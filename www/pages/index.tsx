@@ -13,6 +13,7 @@ import Box from '@material-ui/core/Box';
 import Typography from '@material-ui/core/Typography';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp';
+import { JSDOM } from "jsdom"
 
 import AWS from "aws-sdk"
 
@@ -74,7 +75,9 @@ export async function getStaticProps() {
   const docClient = new AWS.DynamoDB.DocumentClient()
   const TableName = "Problems"
   const SolutionsTableName = 'Solutions'
+  const SESSION_ID = process.env.SESSION_ID;
 
+  // Scan all Solutions
   let solutions: any[] = []
   let SolutionsExclusiveStartKey = undefined
   do {
@@ -86,6 +89,7 @@ export async function getStaticProps() {
     SolutionsExclusiveStartKey = solutionRespose.LastEvaluatedKey
   } while (SolutionsExclusiveStartKey)
 
+  // Scan all problems
   let ExclusiveStartKey = undefined
   let problems: any[] = []
   do {
@@ -94,11 +98,31 @@ export async function getStaticProps() {
     ExclusiveStartKey = response.LastEvaluatedKey
   } while (ExclusiveStartKey)
 
+  // Fetch minimal dislikes
+  let minimalDislikesRows: any;
+  try {
+    const res = await fetch(`https://poses.live/problems`, {
+      method: 'GET',
+      headers: {
+        cookie: `session=${SESSION_ID};`
+      },
+    })
+    const dom = new JSDOM(await res.text())
+    minimalDislikesRows = dom.window.document.getElementsByTagName("table")[0].rows;
+  } catch (e) {
+    console.log(e);
+  }
+
   const rows = problems.sort((a, b) => parseInt(a.ProblemId) - parseInt(b.ProblemId)).map((item): TableRowData => {
     const filtered = solutions.filter(s => s.ProblemId === item.ProblemId)
     filtered.sort((a, b) => a.Dislikes - b.Dislikes)
     // console.log(`${item.ProblemId}: ${JSON.stringify(filtered)}`)
     const solution = filtered[0]
+    const minimalDislike = parseInt(minimalDislikesRows[parseInt(item.ProblemId)].cells[2].textContent)
+    const numVertices = item.NumVertices
+    const numEdges = item.NumEdges
+    const numHole = item.NumHole
+    let score = solution ? Math.ceil(1000 * Math.log2((numVertices * numEdges * numHole) / 6.0) * Math.sqrt((1.0 * minimalDislike + 1) / (solution.Dislikes + 1))) : 0
     return {
       id: parseInt(item.ProblemId),
       dislike: solution ? solution.Dislikes : -1,
@@ -106,8 +130,8 @@ export async function getStaticProps() {
       commitHash: solution ? solution["Commit:Params"].split(":")[0] : "",
       params: solution ? solution["Commit:Params"].split(":")[1] : "",
       solution: solution || null,
-      minimalDislike: 0,
-      score: 0,
+      minimalDislike,
+      score,
       allSolutions: filtered
     }
   })
@@ -184,29 +208,37 @@ export default function Home({ rows }: Props) {
     }
   }, [rows, canvasRefs]);
 
+  const totalScore = rows.reduce((a, b) => a + b.score, 0)
+  console.log(`Total Score = ${totalScore}`)
+
   return (
     <>
-      <TableContainer component={Paper}>
-        <Table stickyHeader className={classes.table} aria-label="simple table">
-          <TableHead>
-            <TableRow>
-              <TableCell />
-              <TableCell>Problem</TableCell>
-              <TableCell>CommitHash</TableCell>
-              <TableCell>Params</TableCell>
-              <TableCell align="right">Dislike</TableCell>
-              <TableCell align="right">Miminal Dislike</TableCell>
-              <TableCell align="right">Score</TableCell>
-              <TableCell>Visualize</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, i) => (
-              <Row key={row.id} row={row} canvasRef={canvasRefs.current[i]} />
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <Box>
+        <Typography variant="h6" gutterBottom component="div">
+          Total Score: {totalScore}
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table stickyHeader className={classes.table} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell />
+                <TableCell>Problem</TableCell>
+                <TableCell>CommitHash</TableCell>
+                <TableCell>Params</TableCell>
+                <TableCell align="right">Dislike</TableCell>
+                <TableCell align="right">Miminal Dislike</TableCell>
+                <TableCell align="right">Score</TableCell>
+                <TableCell>Visualize</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row, i) => (
+                <Row key={row.id} row={row} canvasRef={canvasRefs.current[i]} />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     </>
   )
 }
