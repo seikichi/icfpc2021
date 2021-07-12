@@ -101,7 +101,7 @@ fn main() {
         eprintln!("annealing_solver = {}", annealing_solver);
         let (solution3, dislike3) = match annealing_solver.as_str() {
             "annealing" => solvers::annealing::solve(&input, solution2, time_limit, fix_seed, initial_temperature),
-            "annealing3" => solvers::annealing3::solve(&input, solution2, time_limit, fix_seed),
+            "annealing3" => solvers::annealing3::solve(&input, solution2, time_limit, fix_seed, initial_temperature),
             "hill_climbing" => {
                 solvers::hill_climbing::solve(&input, solution2, time_limit, fix_seed)
             }
