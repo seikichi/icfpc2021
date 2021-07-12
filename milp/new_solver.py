@@ -86,7 +86,6 @@ for i in range(-xmax, xmax + 1):
 
 model = Model("icfpc2021")
 model.hideOutput()
-# model.setRealParam('limits/time', 10)  # FIXME
 
 # MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
 MAX_D = max(1, int(max(xmax - xmin + 1, ymax - ymin + 1) / 4))
@@ -152,6 +151,7 @@ for i, (vi, wi) in enumerate(edges):
          sum(dy * dy * ely[i][dy] for dy in dy_candidates_of_edge[i])) >= d - c
     )
 
+# ここから
 for j in range(len(vertices)):
     for i in range(len(convex_hole)):
         h1 = convex_hole[i]
