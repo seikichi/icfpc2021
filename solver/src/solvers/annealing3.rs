@@ -45,6 +45,7 @@ pub fn solve(
     mut solution: Vec<Point>,
     time_limit: Duration,
     fix_seed: bool,
+    initial_temperature: f64,
 ) -> (Vec<Point>, f64) {
     let n = solution.len();
     let mut rng = if fix_seed {
@@ -64,9 +65,9 @@ pub fn solve(
     let mut best_solution = solution.clone();
     let mut best_score = current_score;
 
-    let initial_temperature = 10000.0;
     let mut progress = 0.0;
     let mut temperature = initial_temperature;
+    eprintln!("initial_temperature = {}", initial_temperature);
 
     let distance_sums = calc_distance_sums(&out_edges, original_vertices.len());
     let distance_total: usize = distance_sums.iter().sum();
