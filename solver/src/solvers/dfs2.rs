@@ -47,7 +47,7 @@ pub fn solve(input: &Input, time_limit: Duration) -> Option<(Vec<Point>, f64)> {
     };
 
     let order = solver.reorder();
-    //eprintln!("reorder = {:?}", order);
+    eprintln!("reorder = {:?}", order);
     assert_eq!(order.len(), input.figure.edges.len());
 
     let possible_ranges = solver.calculate_possible_ranges(&order);
@@ -589,86 +589,6 @@ fn all_points_in_hole(hole: &Polygon) -> Vec<Point> {
         ps.push(p);
     });
     return ps;
-}
-
-// 橋でグラフを分割する。(橋の集合, 各連結成分の頂点集合) が返される。
-// from http://www.prefield.com/algorithm/graph/bridge.html
-fn decompose_by_bridges(out_edges: &[Vec<usize>]) -> (Vec<Edge>, Vec<Vec<usize>>) {
-    fn visit(
-        out_edges: &[Vec<usize>],
-        v: usize,
-        u: usize,
-        brdg: &mut Vec<Edge>,
-        tecomp: &mut Vec<Vec<usize>>,
-        roots: &mut Vec<usize>,
-        s: &mut Vec<usize>,
-        in_s: &mut Vec<bool>,
-        num: &mut Vec<usize>,
-        time: &mut usize,
-    ) {
-        *time += 1;
-        num[v] = *time;
-
-        s.push(v);
-        in_s[v] = true;
-
-        roots.push(v);
-
-        for &w in out_edges[v].iter() {
-            if num[w] == 0 {
-                visit(out_edges, w, v, brdg, tecomp, roots, s, in_s, num, time);
-            } else if u != w && in_s[w] {
-                while num[*roots.last().unwrap()] > num[w] {
-                    roots.pop();
-                }
-            }
-        }
-
-        if v == *roots.last().unwrap() {
-            brdg.push(Edge { v: u, w: v });
-            tecomp.push(vec![]);
-
-            loop {
-                let w = *s.last().unwrap();
-                s.pop();
-                in_s[w] = false;
-                tecomp.last_mut().unwrap().push(w);
-                if v == w {
-                    break;
-                }
-            }
-
-            roots.pop();
-        }
-    }
-
-    let n = out_edges.len();
-    let mut num = vec![0; n];
-    let mut in_s = vec![false; n];
-    let mut roots: Vec<usize> = vec![]; // used as stack
-    let mut s: Vec<usize> = vec![]; // used as stack
-    let mut time = 0;
-    let mut brdg: Vec<Edge> = vec![];
-    let mut tecomp: Vec<Vec<usize>> = vec![];
-    for u in 0..n {
-        if num[u] == 0 {
-            visit(
-                out_edges,
-                u,
-                n,
-                &mut brdg,
-                &mut tecomp,
-                &mut roots,
-                &mut s,
-                &mut in_s,
-                &mut num,
-                &mut time,
-            );
-            brdg.pop();
-        }
-    }
-
-    (brdg, tecomp)
 }
 
 fn make_vertex_to_tecomp_id(tecomp: &[Vec<usize>], n: usize) -> Vec<usize> {
