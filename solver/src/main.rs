@@ -30,7 +30,13 @@ fn main() {
     };
     let fix_seed = std::env::var("FIX_SEED").is_ok();
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
-    let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
+    let annealing_solver: String = {
+        if let Ok(s) = std::env::var("ANNEALING_SOLVER") {
+            s
+        } else {
+            "annealing".to_string()
+        }
+    };
     let skip_ortho = std::env::var("SKIP_ORTHO").is_ok();
     let time_limit = {
         if let Ok(s) = std::env::var("TIME_LIMIT_SECONDS")
@@ -85,12 +91,14 @@ fn main() {
             solution2
         };
 
-        let (solution3, dislike3) = if use_hill_climbing {
-            eprintln!("hill climbing...");
-            solvers::hill_climbing::solve(&input, solution2, time_limit, fix_seed)
-        } else {
-            eprintln!("annealing...");
-            solvers::annealing::solve(&input, solution2, time_limit, fix_seed)
+        eprintln!("annealing_solver = {}", annealing_solver);
+        let (solution3, dislike3) = match annealing_solver.as_str() {
+            "annealing" => solvers::annealing::solve(&input, solution2, time_limit, fix_seed),
+            "annealing3" => solvers::annealing3::solve(&input, solution2, time_limit, fix_seed),
+            "hill_climbing" => {
+                solvers::hill_climbing::solve(&input, solution2, time_limit, fix_seed)
+            }
+            _ => panic!("ANNEALING_SOLVER {} is invalid.", annealing_solver),
         };
         eprintln!("hill_climbing/annealing: dislike = {}", dislike3);
 

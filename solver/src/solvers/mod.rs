@@ -1,5 +1,6 @@
 pub mod adjust;
 pub mod annealing;
+pub mod annealing3;
 pub mod dfs;
 pub mod dfs2;
 pub mod hill_climbing;
