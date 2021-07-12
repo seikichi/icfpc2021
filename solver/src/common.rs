@@ -594,7 +594,9 @@ pub fn fix_allowed_distance_violation(
     let out_edges = make_out_edges(&input.figure.edges, n);
     let order = make_determined_order(&out_edges, Some(start_point_index));
     let mut determined = vec![false; n];
+    let mut moved = vec![false; n];
     determined[start_point_index] = true;
+    moved[start_point_index] = true;
     for index in 1..n {
         let from = order[index];
         determined[from] = true;
@@ -643,6 +645,7 @@ pub fn fix_allowed_distance_violation(
                         (p.x() + dx as f64 + 0.5).floor(),
                         (p.y() + dy as f64 + 0.5).floor(),
                     );
+                    moved[from] = solution[from] != candidate_p;
                     if is_allowed_distance_point_move(
                         from,
                         &candidate_p,
@@ -652,6 +655,7 @@ pub fn fix_allowed_distance_violation(
                         &input.hole,
                         input.epsilon,
                         &determined,
+                        &moved,
                     ) {
                         // if dx != 0 || dy != 0 {
                         //     eprintln!("move: {} {:?}", from, candidate_p - solution[from]);
@@ -691,9 +695,11 @@ fn is_allowed_distance_point_move(
     hole: &Polygon,
     epsilon: i64,
     determined: &[bool],
+    moved: &[bool],
 ) -> bool {
     let ok1 = out_edges[index].iter().all(|&dst| {
-        !determined[dst]
+        (!moved[index] && !moved[dst])
+            || !determined[dst]
             || is_allowed_distance(
                 &p,
                 &solution[dst],
@@ -706,9 +712,11 @@ fn is_allowed_distance_point_move(
     if !ok1 {
         return false;
     }
-    let ok2 = out_edges[index]
-        .iter()
-        .all(|&dst| !determined[dst] || does_line_fit_in_hole(&p, &solution[dst], hole));
+    let ok2 = out_edges[index].iter().all(|&dst| {
+        (!moved[index] && !moved[dst])
+            || !determined[dst]
+            || does_line_fit_in_hole(&p, &solution[dst], hole)
+    });
     if !ok2 {
         return false;
     }
