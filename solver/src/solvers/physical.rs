@@ -1,10 +1,10 @@
 use crate::common::*;
-use std::f64::consts::TAU;
-use geo::{Closest, Coordinate};
-use geo::prelude::*;
 use geo::contains::Contains;
-use std::time::{Duration, Instant};
+use geo::prelude::*;
+use geo::{Closest, Coordinate};
 use rand::prelude::*;
+use std::f64::consts::TAU;
+use std::time::{Duration, Instant};
 
 static SEED: [u8; 32] = [
     0xfd, 0x00, 0xf1, 0x5c, 0xde, 0x01, 0x11, 0xc6, 0xc3, 0xea, 0xfb, 0xbf, 0xf3, 0xca, 0xd8, 0x32,
@@ -13,14 +13,20 @@ static SEED: [u8; 32] = [
 
 type Vector2d = Coordinate<f64>;
 
-fn vec2d(x: f64, y: f64) -> Vector2d { Vector2d { x, y } }
+fn vec2d(x: f64, y: f64) -> Vector2d {
+    Vector2d { x, y }
+}
 
 #[allow(dead_code)]
-pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
+pub fn solve(input: &Input, time_limit: Duration, fix_seed: bool) -> (Vec<Point>, f64) {
     let mut solution = input.figure.vertices.clone();
 
     let n = solution.len();
-    let mut rng = SmallRng::from_seed(SEED);
+    let mut rng = if fix_seed {
+        SmallRng::from_seed(SEED)
+    } else {
+        SmallRng::from_entropy()
+    };
 
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;
@@ -70,7 +76,6 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
             let mut force = vec2d(0.0, 0.0);
             let p0 = solution[i];
             let op0 = original_vertices[i];
-            
             // 1. エッジで繋がっている点からの力
             let k = 1000.0 + 20000.0 * progress; // バネ定数
             for &neighbor in out_edges[i].iter() {
@@ -94,7 +99,9 @@ pub fn solve(input: &Input, time_limit: Duration) -> (Vec<Point>, f64) {
             // 3. ホールの外にいるときに戻る方向に働く力
             let r = 1000.0 + 20000.0 * progress; // この力の係数
             if !input.hole.contains(&p0) {
-                if let Closest::Intersection(p1) | Closest::SinglePoint(p1) = input.hole.closest_point(&p0) {
+                if let Closest::Intersection(p1) | Closest::SinglePoint(p1) =
+                    input.hole.closest_point(&p0)
+                {
                     let dist = distance(&p0, &p1);
                     let f = r;
                     let dir = (p1.0 - p0.0) / (dist + 1e-8);
@@ -145,8 +152,17 @@ pub fn check_solution_quality(input: &Input, solution: &[Point]) {
             let op1 = original_vertices[neighbor];
 
             if !is_allowed_distance(&p0, &p1, &op0, &op1, input.epsilon, false) {
-                let r = Ring::from_epsilon(Point::new(0.0, 0.0), input.epsilon, squared_distance(&op0, &op1));
-                eprintln!("Invalid distance: allowed={}..{}, solution={}", r.inner_radius, r.outer_radius, distance(&p0, &p1));
+                let r = Ring::from_epsilon(
+                    Point::new(0.0, 0.0),
+                    input.epsilon,
+                    squared_distance(&op0, &op1),
+                );
+                eprintln!(
+                    "Invalid distance: allowed={}..{}, solution={}",
+                    r.inner_radius,
+                    r.outer_radius,
+                    distance(&p0, &p1)
+                );
                 ok = false;
             }
         }

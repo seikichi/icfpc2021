@@ -7,7 +7,7 @@ static SEED: [u8; 32] = [
     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
 ];
 
-pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
+pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
     let big_box = Polygon::new(
         geo::LineString::from(vec![
             Point::new(-1e+9, -1e+9),
@@ -19,7 +19,11 @@ pub fn solve(input: &Input) -> Option<(Vec<Point>, f64)> {
     );
     let mut solution = input.figure.vertices.clone();
     let mut temp_input = input.clone();
-    let mut rng = SmallRng::from_seed(SEED);
+    let mut rng = if fix_seed {
+        SmallRng::from_seed(SEED)
+    } else {
+        SmallRng::from_entropy()
+    };
     let n = solution.len();
     let mut best_variance = calc_variance(&solution);
 

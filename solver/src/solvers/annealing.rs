@@ -33,9 +33,18 @@ fn ascore(solution: &Vec<Point>, input: &Input) -> f64 {
     dislike / (input.hole.exterior().coords_count() as f64) - (vx + vy) * 1.0
 }
 
-pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (Vec<Point>, f64) {
+pub fn solve(
+    input: &Input,
+    mut solution: Vec<Point>,
+    time_limit: Duration,
+    fix_seed: bool,
+) -> (Vec<Point>, f64) {
     let n = solution.len();
-    let mut rng = SmallRng::from_seed(SEED);
+    let mut rng = if fix_seed {
+        SmallRng::from_seed(SEED)
+    } else {
+        SmallRng::from_entropy()
+    };
     let mut current_score = ascore(&solution, &input);
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;

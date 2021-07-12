@@ -7,9 +7,18 @@ static SEED: [u8; 32] = [
     0x6a, 0xe3, 0x07, 0x99, 0xc5, 0xe0, 0x52, 0xe4, 0xaa, 0x35, 0x07, 0x99, 0xe3, 0x2b, 0x9d, 0xc6,
 ];
 
-pub fn solve(input: &Input, mut solution: Vec<Point>, time_limit: Duration) -> (Vec<Point>, f64) {
+pub fn solve(
+    input: &Input,
+    mut solution: Vec<Point>,
+    time_limit: Duration,
+    fix_seed: bool,
+) -> (Vec<Point>, f64) {
     let n = solution.len();
-    let mut rng = SmallRng::from_seed(SEED);
+    let mut rng = if fix_seed {
+        SmallRng::from_seed(SEED)
+    } else {
+        SmallRng::from_entropy()
+    };
     let mut current_score = calculate_dislike(&solution, &input.hole);
     let out_edges = make_out_edges(&input.figure.edges, n);
     let original_vertices = &input.figure.vertices;

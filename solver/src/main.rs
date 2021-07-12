@@ -21,6 +21,7 @@ fn main() {
             vec![]
         }
     };
+    let fix_seed = std::env::var("FIX_SEED").is_ok();
     let disable_dfs_centroid = std::env::var("DISABLE_DFS_CENTROID").is_ok();
     let use_hill_climbing = std::env::var("USE_HILL_CLIMBING").is_ok();
     let use_dfs2 = std::env::var("USE_DFS2").is_ok();
@@ -48,7 +49,7 @@ fn main() {
     let initial_solution = match initial_solver.as_str() {
         "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
         // "dfs2" => solve_with_dfs2(&input, &used_bonus_types),
-        "shrink" => solvers::shrink::solve(&input),
+        "shrink" => solvers::shrink::solve(&input, fix_seed),
         _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
     };
     if let Some((solution1, dislike1)) = initial_solution {
@@ -67,10 +68,10 @@ fn main() {
 
         let (solution3, dislike3) = if use_hill_climbing {
             eprintln!("hill climbing...");
-            solvers::hill_climbing::solve(&input, solution2, time_limit)
+            solvers::hill_climbing::solve(&input, solution2, time_limit, fix_seed)
         } else {
             eprintln!("annealing...");
-            solvers::annealing::solve(&input, solution2, time_limit)
+            solvers::annealing::solve(&input, solution2, time_limit, fix_seed)
         };
         eprintln!("hill_climbing/annealing: dislike = {}", dislike3);
 
