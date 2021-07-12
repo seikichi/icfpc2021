@@ -42,6 +42,9 @@ def find_largest_sub_convex_hole(hole):
             prev, curr = curr, n
             points.append(n)
 
+        if not LinearRing([prev, curr, hole[start]]).is_ccw:
+            continue
+
         size = Polygon(points).area
         if max_size < size:
             max_size = size
@@ -49,12 +52,17 @@ def find_largest_sub_convex_hole(hole):
 
     return result
 
-# convex_hole = find_largest_sub_convex_hole(hole)
-convex_hole = hole # FIXME
+
+convex_hole = find_largest_sub_convex_hole(hole)
+# convex_hole = hole  # FIXME
+
+hole_ploy = Polygon(hole)
 convex_hole_poly = Polygon(convex_hole)
 
-xmin, ymin, xmax, ymax = map(int, convex_hole_poly.bounds)
-print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}", file=sys.stderr)
+xmin, ymin, xmax, ymax = map(int, hole_ploy.bounds)
+print(f"xmin = {xmin}, ymin = {ymin}, xmax = {xmax}, ymax = {ymax}",
+      file=sys.stderr)
+print(f"hole = ${hole}", file=sys.stderr)
 print(f"convex hole = ${convex_hole}", file=sys.stderr)
 
 points_by_distances = {}
@@ -77,6 +85,11 @@ for i in range(-xmax, xmax + 1):
             points_by_distances[d].append((i, j))
 
 model = Model("icfpc2021")
+model.hideOutput()
+# model.setRealParam('limits/time', 10)  # FIXME
+
+# MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
+MAX_D = max(1, int(max(xmax - xmin + 1, ymax - ymin + 1) / 4))
 
 print("create variables (b) ...", file=sys.stderr)
 pvx = []
@@ -153,33 +166,31 @@ for j in range(len(vertices)):
         model.addCons(cx * (pvy[j] - vy) - cy * (pvx[j] - vx) >= 0)
 
 sign = []
-for i in range(len(convex_hole)):
+for i in range(len(hole)):
     sign.append([])
     for j in range(len(vertices)):
         sign[-1].append(model.addVar(vtype="B"))
 
-for i in range(len(convex_hole)):
+for i in range(len(hole)):
     model.addCons(sum(sign[i][j] for j in range(len(vertices))) == 1)
 
-# MAX_D = max(xmax - xmin + 1, ymax - ymin + 1)  # TODO
-MAX_D = 1
 hdlx = []
 hdly = []
-for i in range(len(convex_hole)):
+for i in range(len(hole)):
     hdlx.append([])
     hdly.append([])
     for j in range(MAX_D):
         hdlx[-1].append(model.addVar(vtype="B"))
         hdly[-1].append(model.addVar(vtype="B"))
 
-for i in range(len(convex_hole)):
+for i in range(len(hole)):
     model.addCons(sum(hdlx[i][j] for j in range(MAX_D)) == 1)
     model.addCons(sum(hdly[i][j] for j in range(MAX_D)) == 1)
 
 M = 1000000
 
-for i in range(len(convex_hole)):
-    hx, hy = convex_hole[i]
+for i in range(len(hole)):
+    hx, hy = hole[i]
     for k in range(len(vertices)):
         model.addCons(
             pvx[k] - hx <= sum(j * hdlx[i][j]
@@ -202,15 +213,15 @@ for i in range(len(convex_hole)):
 model.setObjective(
     sum(
         j * j * hdlx[i][j] + j * j * hdly[i][j]
-        for i in range(len(convex_hole))
+        for i in range(len(hole))
         for j in range(MAX_D)
     ),
     "minimize"
 )
-model.hideOutput()
 model.optimize()
 
 print("Optimal value:", model.getObjVal(), file=sys.stderr)
+print("Gap:", model.getGap(), file=sys.stderr)
 
 result = []
 for i in range(len(vertices)):
