@@ -7,3 +7,4 @@ pub mod hill_climbing;
 pub mod orthgonal;
 pub mod physical;
 pub mod shrink;
+pub mod annealing2;
