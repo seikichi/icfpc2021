@@ -49,14 +49,14 @@ fn main() {
     let input = read_input();
 
     if use_dfs2 {
-        return solve_with_dfs2(&input, &used_bonus_types);
+        return solve_with_dfs2(&input, time_limit, &used_bonus_types);
     }
 
     let initial = if initial_solution.is_none() {
         eprintln!("initial_solver = {}", initial_solver);
         match initial_solver.as_str() {
             "dfs" => solvers::dfs::solve(&input, disable_dfs_centroid),
-            "dfs2" => solvers::dfs2::solve(&input),
+            "dfs2" => solvers::dfs2::solve(&input, time_limit),
             "shrink" => solvers::shrink::solve(&input, fix_seed),
             _ => panic!("INITIAL_SOLVER {} is invalid.", initial_solver),
         }
@@ -134,8 +134,8 @@ fn main() {
     }
 }
 
-fn solve_with_dfs2(input: &Input, used_bonus_types: &Vec<BonusType>) {
-    if let Some((solution, dislike)) = solvers::dfs2::solve(&input) {
+fn solve_with_dfs2(input: &Input, time_limit: Duration, used_bonus_types: &Vec<BonusType>) {
+    if let Some((solution, dislike)) = solvers::dfs2::solve(&input, time_limit) {
         eprintln!("dfs2: dislike = {}", dislike);
 
         // output
