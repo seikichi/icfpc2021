@@ -33,7 +33,8 @@ pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
         orders[i] = make_determined_order(&out_edges, Some(i));
     }
 
-    for iter in 0..10000 {
+    let mut move_count = 0;
+    for iter in 0..50000 {
         if iter % (n * 10) == 0 {
             let temp = temp_input.figure.vertices;
             temp_input.figure.vertices = solution.clone();
@@ -42,7 +43,7 @@ pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
             if ret.is_some() {
                 return ret;
             }
-            // eprintln!("orthgonal is failed: {}", iter);
+            // eprintln!("orthgonal is failed: {} {}", iter, move_count);
         }
         let from = rng.gen::<usize>() % n;
         let offset = 5;
@@ -68,6 +69,7 @@ pub fn solve(input: &Input, fix_seed: bool) -> Option<(Vec<Point>, f64)> {
             // eprintln!("move success: {} {} {}", iter, dx, dy);
             solution = next_solution;
             best_variance = variance;
+            move_count += 1;
         }
     }
     return None;
